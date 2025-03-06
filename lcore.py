@@ -474,8 +474,7 @@ def k_leval(ctx):
         return ctx.cont
 
     op, args = x
-    tt = op.__class__
-    if tt is Symbol:
+    if op.__class__ is Symbol:
         e = ctx.env
         while e is not SENTINEL:
             try:
@@ -499,7 +498,7 @@ def k_leval(ctx):
         return k_leval_proc_done
     except AttributeError:
         pass
-    if tt is not list:
+    if op.__class__ is not list:
         raise SyntaxError(f"expected list or proc, got {op!r}")
     ctx.cont = k_leval_proc_done
     ctx.exp = op

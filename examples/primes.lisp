@@ -51,11 +51,11 @@
     )
     (define (driver)
         (while (lambda () (not (outer))))
-        pl
+        (last pl)
     )
     driver
 )
 
 (define g (primes))
-(define (h _) (g));(print (g)))
-(for h 1 400 1)
+(define (h _) (print (g)))
+(for h 1 40 1)

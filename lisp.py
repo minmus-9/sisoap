@@ -798,11 +798,6 @@ RUNTIME = r"""
 )))
 
 ;; }}}
-;; {{{ def
-
-(define def define)
-
-;; }}}
 ;; {{{ bitwise ops
 
 ;; bitwise ops from nand
