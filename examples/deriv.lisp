@@ -17,7 +17,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-(def (deriv exp var)
+(define (deriv exp var)
     (cond
         ((number? exp) 0)
         ((variable? exp)
@@ -49,20 +49,20 @@
     )
 )
 
-(def (number? x)
+(define (number? x)
     (or
         (eq? (type x) 'integer)
         (eq? (type x) 'float)
     )
 )
 
-(def (symbol? x)
+(define (symbol? x)
     (eq? (type x) 'symbol)
 )
 
-(def (variable? x) (symbol? x))
+(define (variable? x) (symbol? x))
 
-(def (same-variable? x y)
+(define (same-variable? x y)
     (and
         (variable? x)
         (variable? y)
@@ -70,15 +70,15 @@
     )
 )
 
-(def (zero? x)
+(define (zero? x)
     (and (number? x) (equal? x 0))
 )
 
-(def (one? x)
+(define (one? x)
     (and (number? x) (equal? x 1))
 )
 
-(def (make-sum x y)
+(define (make-sum x y)
     (cond
         ((zero? x) y)
         ((zero? y) x)
@@ -87,7 +87,7 @@
     )
 )
 
-(def (make-product x y)
+(define (make-product x y)
     (cond
         ((or (zero? x) (zero? y)) 0)
         ((one? x) y)
@@ -97,23 +97,23 @@
     )
 )
 
-(def (sum? x)
+(define (sum? x)
     (and
         (pair? x)
         (eq? (car x) 'add)
     )
 )
-(def (addend x) (cadr x))
-(def (augend x) (caddr x))
+(define (addend x) (cadr x))
+(define (augend x) (caddr x))
 
-(def (product? x)
+(define (product? x)
     (and
         (pair? x)
         (eq? (car x) 'mul)
     )
 )
-(def (multiplier x) (cadr x))
-(def (multiplicand x) (caddr x))
+(define (multiplier x) (cadr x))
+(define (multiplicand x) (caddr x))
 
 (deriv '(add x 3) 'x)
 (deriv '(mul x y) 'x)

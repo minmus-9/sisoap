@@ -511,7 +511,7 @@ def k_leval_proc_done(ctx):
     try:
         _ = proc.__call__
     except AttributeError:
-        raise SyntaxError("expected callable, got {proc!r}") from None
+        raise SyntaxError(f"expected callable, got {proc!r}") from None
     ctx.argl, s = ctx.s
     ctx.env, s = s
 

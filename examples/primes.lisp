@@ -18,10 +18,10 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-(def (primes)
+(define (primes)
     (define pl '(2))
     (define t pl)
-    (def (q x)
+    (define (q x)
         (define n (cons x ()))
         (set-cdr! t n)
         (set! t n)
@@ -29,7 +29,7 @@
     (define i 1)
     (define ok #t)
     (define l pl)
-    (def (inner)
+    (define (inner)
         (define p (car l))
         (set! l (cdr l))
         (if
@@ -42,14 +42,14 @@
             )
         )
     )
-    (def (outer)
+    (define (outer)
         (set! i (add i 2))
         (set! ok #t)
         (set! l pl)
         (while inner)
         (if ok (do (q i) pl) ())
     )
-    (def (driver)
+    (define (driver)
         (while (lambda () (not (outer))))
         pl
     )
@@ -57,5 +57,5 @@
 )
 
 (define g (primes))
-(def (h _) (g));(print (g)))
+(define (h _) (g));(print (g)))
 (for h 1 400 1)

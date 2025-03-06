@@ -5,19 +5,19 @@
 
 (define else #t)
 
-(def (sort-list obj pred)
+(define (sort-list obj pred)
 
-  (def (loop l)
+  (define (loop l)
     (if (and (pair? l) (pair? (cdr l)))
         (split-list l () ())
         l))
 
-  (def (split-list l one two)
+  (define (split-list l one two)
     (if (pair? l)
         (split-list (cdr l) two (cons (car l) one))
         (merge (loop one) (loop two))))
 
-  (def (merge one two)
+  (define (merge one two)
     (cond ((null? one) two)
           ((pred (car two) (car one))
            (cons (car two)
@@ -36,7 +36,7 @@
 ;;;
 
 
-(def (memq element lst)
+(define (memq element lst)
     (if
         (equal? element (car lst))
         #t
@@ -44,16 +44,16 @@
     )
 )
 
-(def (adjoin element set)
+(define (adjoin element set)
   (if (memq element set) set (cons element set)))
 
-(def (eliminate element set)
+(define (eliminate element set)
   (cond ((null? set) set)
         ((eq? element (car set)) (cdr set))
         (else (cons (car set) (eliminate element (cdr set))))))
 
-(def (intersect list1 list2)
-  (def (loop l)
+(define (intersect list1 list2)
+  (define (loop l)
     (cond ((null? l) ())
           ((memq (car l) list2) (cons (car l) (loop (cdr l))))
           (else (loop (cdr l))))
@@ -61,7 +61,7 @@
   (loop list1)
 )
 
-(def (union list1 list2)
+(define (union list1 list2)
   (if (null? list1)
       list2
       (union (cdr list1)

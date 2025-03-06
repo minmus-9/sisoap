@@ -18,14 +18,15 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;; signed integer multiplication from subtraction and right shift (division)
-(define smul-ref (lambda (x y) (do
-    (define umul (lambda (x y z) (
-        cond
+(define (smul-ref x y)
+    (define (umul x y z)
+        (cond
             ((equal? y 1) x) ;; y could have been -1 on entry to smul
             ((equal? 0 x) z)
             ((equal? 0 (band x 0x1)) (umul (div x 2) (add y y) z))
             (#t (umul (div x 2) (add y y) (add z y)))
-    )))
+        )
+    )
     (cond
         ((equal? x 0) 0)
         ((equal? y 0) 0)
@@ -34,69 +35,65 @@
         ((equal? y 1) x)
         (#t (copysign (umul x (abs y) 0) y))
     )
-)))
+)
 
 ;(define smul smul-ref)  ;; comment this for custom
 
 (define n1 9283745983845763247685783256234879658946957397948234)
 (define n2 928375983857632768578325623487965894695739794823743)
 
-(define one (lambda ()
+(define (one)
     (smul n1 n2)
-))
+)
 
-(define two (lambda ()
+(define (two)
     (let
         ((x (one))
          (y (one))
          (z (e n1 n2)))
         x
     )
-))
+)
 
-(define e (lambda (x y) (do  ;; gcd
+(define (e x y)  ;; gcd
     (cond
         ((equal? y 0) x)
         ((equal? x 0) 1)
-        (#t (do
-            (define r (mod x y))
+        (#t (define r (mod x y))
             (e y r)
-        ))
+        )
     )
-)))
+)
 
-(define three (lambda (n l) ( do
+(define (three n l)
     (cond
         ((lt? n 1) l)
-        (#t (do
-            (three (sub n 1) (cons n l))
-        ))
+        (#t (three (sub n 1) (cons n l)))
     )
-)))
+)
 
 
-(define pie (lambda (n) (do
+(define (pie n)
     (cond
         ((lt? n 1) ())
-        (#t (do
-            (e n1 n2)
+        (#t (e n1 n2)
             (two)
             (pie (sub n 1))
-        ))
+        )
     )
-)))
+)
 
 
-(define four (lambda (n) ( do
+(define (four n)
     (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2)
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
-)))
+)
 
-(define five (lambda () (four 80)))
+(define (five) (four 80))
 
 ((lambda () (do (five) ())))
 

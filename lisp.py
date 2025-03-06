@@ -708,89 +708,6 @@ def op_ffi_time(args):
 
 
 RUNTIME = r"""
-;; {{{ quasiquote
-
-(special xquasiquote (lambda (x) (qq- x (lambda (x) (eval x 1)))))
-
-(define qq-queue (lambda () (list () ())))
-
-(define qq-hed (lambda (q) (car q)))
-
-(define qq-enq (lambda (q x) (do
-    (define n (cons x ()))
-    (if
-        (null? (car q))
-        (set-car! q n)
-        (set-cdr! (cdr q) n)
-    )
-    (set-cdr! q n)
-    (car q)
-)))
-
-(define qq-lst (lambda (q l) (do
-    (if
-        (null? l)
-        ()
-        (do
-            (qq-enq q (car l))
-            (qq-lst q (cdr l))
-        )
-    )
-    (car q)
-)))
-
-(define qq- (lambda (form evaluator) (do
-    (if
-        (pair? form)
-        (qq-pair form evaluator)
-        form
-    )
-)))
-
-(define qq-pair (lambda (form evaluator) (do
-    (define q (qq-queue))
-    (if
-        (null? (cdr (cdr form)))
-        (qq-pair-2 form q evaluator)
-        (qq-list form q evaluator)
-    )
-)))
-
-(define qq-pair-2 (lambda (form q evaluator) (do
-    (define app (car form))
-    (cond
-        ((eq? app 'quasiquote) (qq-enq q (qq- (cadr form) evaluator)))  ; XXX correct?
-        ((eq? app 'unquote) (evaluator (cadr form)))
-        ((eq? app 'unquote-splicing) (error "cannot do unquote-splicing here"))
-        (#t (qq-list form q evaluator))
-    )
-)))
-
-(define qq-list (lambda (form q evaluator) (do
-    (if
-        (null? form)
-        ()
-        (do
-            (define elt (car form))
-            (if
-                (pair? elt)
-                (if
-                    (null? (cdr (cdr elt)))
-                    (if
-                        (eq? (car elt) 'unquote-splicing)
-                        (qq-lst q (evaluator (cadr elt)))
-                        (qq-enq q (qq- elt evaluator))
-                    )
-                    (qq-enq q (qq- elt evaluator))
-                )
-                (qq-enq q (qq- elt evaluator))
-            )
-            (qq-list (cdr form) q evaluator)
-        )
-    )
-    (qq-hed q)
-)))
-;; }}}
 ;; {{{ basics
 
 ;; to accompany quasiquote
@@ -899,6 +816,7 @@ RUNTIME = r"""
 
 (define (neg x) (sub 0 x))
 (define (add x y) (sub x (neg y)))
+(define + add)
 
 ;; oh, and mod
 (define (mod n d) (sub n (mul d (div n d))))

@@ -20,7 +20,7 @@
 
 ;; NB this only works with lisp04-trampolined-fancy/lisp.py lisp/lisp04.lisp
 
-(define !1 (lambda (n)
+(define (!1 n)
     (if
         (define n! 1)
         ()
@@ -31,9 +31,9 @@
             (set! n (sub n 1))
         )
     )
-))
+)
 
-(def (!2 n)
+(define (!2 n)
     (if
         (lt? n 2)
         1
@@ -41,7 +41,7 @@
     )
 )
 
-(def (!3 n)
+(define (!3 n)
     (define n! 1)
     (define c (call/cc (lambda (cc) cc)))
     (if
@@ -55,14 +55,14 @@
     )
 )
 
-(def (!4 n)
+(define (!4 n)
      (define n! 1)
-     (def (f k) (set! n! (mul n! k)))
+     (define (f k) (set! n! (mul n! k)))
      (for f 2 (add n 1) 1)
      n!
 )
 
-(def (!5 n)
+(define (!5 n)
     (define cont ())
     (define n! 1)
     (define k (call/cc (lambda (cc) (do (set! cont cc) n))))
@@ -74,8 +74,8 @@
     )
 )
 
-(def (!6 n)
-    (def (iter n! k)
+(define (!6 n)
+    (define (iter n! k)
         (if
             (lt? k 2)
             n!
@@ -85,17 +85,17 @@
     (iter 1 n)
 )
 
-(def (!7 n)
+(define (!7 n)
      (math 'factorial n)
 )
 
-(def (!8 n)
+(define (!8 n)
     (fold-left mul 2 (range 3 (add n 1) 1))
 )
 
-(def (xrange start stop step)
+(define (xrange start stop step)
     (define i (sub start step))
-    (def (next)
+    (define (next)
         (if
             (ge? i stop)
             ()
@@ -108,8 +108,8 @@
     next
 )
 
-(def (!9 n)
-    (def (f r)
+(define (!9 n)
+    (define (f r)
         (if
             (null? (do (define k ((car r))) k))
             (cdr r)
@@ -119,7 +119,7 @@
     (f (cons (xrange 2 n 1) 1))
 )
 
-(def (!10 n)
+(define (!10 n)
     (let* (
         (it (xrange 2 n 1))
         (c  ())
@@ -133,7 +133,7 @@
     )
 )
 
-(def (!11 n)
+(define (!11 n)
     (define c ())
     ((lambda (n! k) ( do
         (set! n (sub k 1))
@@ -143,9 +143,9 @@
     )
 )
 
-(def (!12 n)
+(define (!12 n)
     (define c ())
-    (def (f n!k)
+    (define (f n!k)
         (if
             (lt? (cdr n!k) 2)
             (car n!k)
@@ -167,8 +167,8 @@
     )
 )
 
-(def (!13 n)
-    (def (f info)
+(define (!13 n)
+    (define (f info)
         (if
             (lt? (cadr info) 2)
             (car info)
@@ -184,16 +184,16 @@
     (f (call/cc (lambda (cc) (list 1 n cc))))
 )
 
-(def (!14 n)
-    (def (f x)
+(define (!14 n)
+    (define (f x)
         (set! n (sub n 1))
         (mul n x)
     )
     (iter-func f n (sub n 1))
 )
 
-(def (!15 n)
-    (def (f nn!)
+(define (!15 n)
+    (define (f nn!)
         (define n (car nn!))
         (define n! (cdr nn!))
         (cons
@@ -204,7 +204,7 @@
     (cdr (iter-func f (cons 1 1) n))
 )
 
-(def (!16 n)
+(define (!16 n)
     (define n! 1)
     ((lambda (c & _)
         (if (lt? n 2) n! (c c)))
@@ -214,7 +214,7 @@
     )
 )
 
-(def (!17 n)
+(define (!17 n)
     (define l ())
     (define n! 1)
     (for
@@ -237,7 +237,7 @@
     n!
 )
 
-(def (!18 n)
+(define (!18 n)
     (cond
         ((lt? n 2) 1)
         ((lt? n 3) 2)
@@ -247,7 +247,7 @@
     )
 )
 
-(def (!19 n)
+(define (!19 n)
     ((lambda (f) (f f 1 n))
         (lambda (f p k)
             (if (lt? k 2)
@@ -258,7 +258,7 @@
     )
 )
 
-(def (!bench)
+(define (!bench)
     (define reps 5)
     (define n 400)
     (print 'nil (timeit (lambda (_) ()) 10))

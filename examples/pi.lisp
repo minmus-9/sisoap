@@ -18,11 +18,11 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-(def (pi1 _)
+(define (pi1 _)
     (define z 1)
     (define k 3)
     (define s -1.0)
-    (def (f c & _) (if (lt? k 25000) (c c) ()));print (mul z 4))))
+    (define (f c & _) (if (lt? k 25000) (c c) ()));print (mul z 4))))
     (f  (call/cc (lambda (cc) cc))
         (set! z (add z (div s k)))
         (set! k (add k 2))
@@ -31,7 +31,7 @@
 )
 (timeit pi1 1)
 
-(def (pi2 & _)
+(define (pi2 & _)
     (define k 2)
     (define a 4)
     (define b 1)
@@ -39,7 +39,7 @@
     (define b1 4)
     (define d ())
     (define d1 ())
-    (def (next)
+    (define (next)
         (define p (mul k k))
         (define q (add (mul k 2) 1))
         (set! k (add k 1))
@@ -58,7 +58,7 @@
             ()
         )
     )
-    (def (inner)
+    (define (inner)
         (if
             (equal? d d1)
             (do

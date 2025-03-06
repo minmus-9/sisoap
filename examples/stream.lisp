@@ -19,7 +19,7 @@
 
 ;; XXX this doesn't work with the lisp implementation of quasiquote
 
-(def (memo-proc proc)
+(define (memo-proc proc)
     (let (
         (already-run? ())
         (result ())
@@ -39,7 +39,7 @@
 (define the-empty-stream ())
 (define stream-null? null?)
 
-(def (stream-ref s n)
+(define (stream-ref s n)
      (if
         (equal? n 0)
         (stream-car s)
@@ -47,7 +47,7 @@
     )
 )
 
-(def (stream-map proc s)
+(define (stream-map proc s)
     (if
         (stream-null? s)
         the-empty-stream
@@ -56,7 +56,7 @@
     )
 )
 
-(def (stream-for-each proc s)
+(define (stream-for-each proc s)
     (if
         (stream-null? s)
         'done
@@ -71,14 +71,14 @@
     (eval `(memo-proc (lambda () ,x)) 1)
 ))
 
-(def (force x) (x))
+(define (force x) (x))
 
 (special cons-stream (lambda (x y) (eval `(cons ,x (delay ,y)) 1)))
 
-(def (stream-car x) (car x))
-(def (stream-cdr x) (force (cdr x)))
+(define (stream-car x) (car x))
+(define (stream-cdr x) (force (cdr x)))
 
-(def (stream-filter pred stream)
+(define (stream-filter pred stream)
     (cond
         ((stream-null? stream) the-empty-stream)
         ((pred (stream-car stream))
@@ -92,18 +92,18 @@
 
 
 
-(def (fibgen a b) (cons-stream a (fibgen b (add a b))))
+(define (fibgen a b) (cons-stream a (fibgen b (add a b))))
 (define fibs (fibgen 0 1))
 
-(def (stream-counter start)
+(define (stream-counter start)
     (cons-stream
         start
         (stream-counter (add start 1))
     )
 )
 
-(def (sieve stream)
-    (def (divisible? x y) (equal? (mod x y) 0))
+(define (sieve stream)
+    (define (divisible? x y) (equal? (mod x y) 0))
     (cons-stream
         (stream-car stream)
         (sieve
@@ -121,7 +121,7 @@
 ;(stream-for-each print primes)
 
 
-(def (stream-enumerate-interval low high)
+(define (stream-enumerate-interval low high)
     (if
         (lt? high low)
         the-empty-stream
@@ -132,7 +132,7 @@
 
 ;(stream-for-each print (stream-enumerate-interval 1 10))
 
-(def (stream-map proc & argstreams)
+(define (stream-map proc & argstreams)
     (if
         (stream-null? (car argstreams))
         the-empty-stream
@@ -143,8 +143,8 @@
     )
 )
 
-(def (stream-sink f s)
-    (def (g)
+(define (stream-sink f s)
+    (define (g)
         (if
             (stream-null? s)
             ()
@@ -158,7 +158,7 @@
     (while g)
 )
 
-(def (stream-add s1 s2) (stream-map add s1 s2))
+(define (stream-add s1 s2) (stream-map add s1 s2))
 
 (define ones (cons-stream 1 ones))
 
