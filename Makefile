@@ -1,8 +1,8 @@
 ########################################################################
 ## Makefile
 ##
-## pwl - python with lisp, a collection of lisp evaluators for Python
-##       https://github.com/minmus-9/pwl
+## sisoap - python lisp: solution in search of a problem
+##       https://github.com/minmus-9/sisoap
 ## Copyright (C) 2025  Mark Hays (github:minmus-9)
 ## 
 ## This program is free software: you can redistribute it and/or modify
@@ -18,29 +18,10 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-P:=python3
-TFLAG:= -p
-
 all:
-
-bench:
-	@for d in lisp[0-9]*/; do \
-	    (echo; cd $$d && $(MAKE) PYTHON=$(P) TFLAG=$(TFLAG) $@; echo); \
-	done
-
-fastfac:
-	@for d in lisp[0-9]*/; do \
-	    (echo; cd $$d && $(MAKE) PYTHON=$(P) TFLAG=$(TFLAG) $@; echo); \
-	done
-
-sicp:
-	@for d in lisp[0-9]*/; do \
-	    (echo; cd $$d && $(MAKE) PYTHON=$(P) TFLAG=$(TFLAG) $@; echo); \
-	done
 
 clean:
 	rm -f profile
-	find . -type d -name __pycache__ -print0 | \
-	    xargs -0 -n 25 rm -rf || true
+	find . -type d -name __pycache__ -print0 | xargs -0 -n 25 rm -rf || true
 
 ## EOF

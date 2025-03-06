@@ -1,7 +1,7 @@
 ;; factorial.lisp - yup
 ;;
-;; pwl - python with lisp, a collection of lisp evaluators for Python
-;;       https://github.com/minmus-9/pwl
+;; sisoap - python lisp: solution in search of a problem
+;;       https://github.com/minmus-9/sisoap
 ;; Copyright (C) 2025  Mark Hays (github:minmus-9)
 ;; 
 ;; This program is free software: you can redistribute it and/or modify

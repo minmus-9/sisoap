@@ -1,3 +1,6 @@
+;; sisoap - python lisp: solution in search of a problem
+;;       https://github.com/minmus-9/sisoap
+;;
 ;; from https://github.com/ecraven/r7rs-benchmarks/blob/master/src/conform.scm
 
 (define else #t)

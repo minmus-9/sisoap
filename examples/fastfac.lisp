@@ -5,22 +5,33 @@
 ;;                   page for lambda calculus shows this technique as
 ;;                   well
 ;;
-;; all of the lisps here can run this code as-is
+;; sisoap - python lisp: solution in search of a problem
+;;       https://github.com/minmus-9/sisoap
+;; Copyright (C) 2025  Mark Hays (github:minmus-9)
+;; 
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;; 
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;; 
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-(define ! (lambda (n)
+(define (! n)
     ((lambda (f) (f f 1 n))
         (lambda (f p k)
-            (cond
-                ((lt? k 2)  p)
-                (#t         (f f (mul p k) (sub k 1))))))))
+            (if
+                (< k 2)
+                p
+                (f f (* p k) (- k 1))))))
 
-(define n 191)  ;; as much as the recursive lisp implementations can handle
+(define n 10000)
 
-(define f1 (lambda () (! n)))
-(define f5 (lambda () (do (f1) (f1) (f1) (f1) (f1))))
-(define g5 (lambda () (do (f5) (f5) (f5) (f5) (f5))))
-(define h5 (lambda () (do (g5) (g5) (g5) (g5) (g5))))
-(define i5 (lambda () (do (h5) (h5) (h5) (h5) (h5))))
-(i5)
+(timeit (lambda (_) (! n)) 10)
 
 ;; EOF

@@ -1,10 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sicp.lisp - some stuff from early in the sicp book
 ;;
-;; these examples work with all the lisps here
-;;
-;; pwl - python with lisp, a collection of lisp evaluators for Python
-;;       https://github.com/minmus-9/pwl
+;; sisoap - python lisp: solution in search of a problem
+;;       https://github.com/minmus-9/sisoap
 ;; Copyright (C) 2025  Mark Hays (github:minmus-9)
 ;; 
 ;; This program is free software: you can redistribute it and/or modify
