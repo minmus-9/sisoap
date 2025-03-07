@@ -714,7 +714,7 @@ class Parser:
         self.token = []
         self.add = self.token.append
         self.parens = []  ## () and [] pairing
-        self.qstack = []  ## parser quotes
+        self.qstack = EL  ## parser quotes
         self.lstack = []  ## parsed lists
         self.stab = (  ## this corresponds to the S_* index constants
             self.do_sym,
@@ -732,7 +732,7 @@ class Parser:
                 raise SyntaxError("eof in {self.state!r}")
             if self.parens:
                 raise SyntaxError(f"eof expecting {self.parens.pop()!r}")
-            if self.qstack:
+            if self.qstack is not EL:
                 raise SyntaxError("unclosed quasiquote")
             return
         pos = self.pos
@@ -751,8 +751,9 @@ class Parser:
 
     def quote_wrap(self, x):
         qs = self.qstack
-        while qs and qs[-1].__class__ is Symbol:
-            x = [qs.pop(), [x, EL]]
+        while qs is not EL and qs[0].__class__ is Symbol:
+            q, qs = qs
+            x = [q, [x, EL]]
         return x
 
     def sym(self):
@@ -777,7 +778,7 @@ class Parser:
             if ch in "([":
                 self.sym()
                 self.parens.append(")" if ch == "(" else "]")  ## faster than a lut
-                self.qstack.append(SENTINEL)
+                self.qstack = [SENTINEL, self.qstack]
                 self.lstack.append(ListBuilder())
             elif ch in ")]":
                 self.sym()
@@ -785,7 +786,7 @@ class Parser:
                     raise SyntaxError(f"too many {ch!r}")
                 if self.parens.pop() != ch:
                     raise SyntaxError(f"unexpected {ch!r}")
-                del self.qstack[-1]
+                self.qstack = self.qstack[1]
                 self.append(self.lstack.pop().get())
             elif ch in " \n\r\t":
                 self.sym()
@@ -800,7 +801,7 @@ class Parser:
                     self.state = self.S_STRING
                     return
                 if ch in "'`":
-                    self.qstack.append(self.qt[ch])
+                    self.qstack = [self.qt[ch], self.qstack]
                 else:
                     self.state = self.S_COMMA
         else:
@@ -837,12 +838,13 @@ class Parser:
 
     def do_comma(self, ch):
         if ch == "@":
-            self.qstack.append(self.qt[",@"])
+            q = self.qt[",@"]
         else:
             self.pos[0] -= 1  ## pos is a list so it can communicate
                               ## with feed() without calling getattr()
                               ## on self. yes, it's actually faster.
-            self.qstack.append(self.qt[","])
+            q = self.qt[","]
+        self.qstack.append(q)
         self.state = self.S_SYM
 
 
