@@ -713,9 +713,9 @@ class Parser:
         self.pos = [0]  ## yup, a list, see feed() and S_COMMA code
         self.token = []
         self.add = self.token.append
-        self.parens = []  ## () and [] pairing
+        self.parens = EL  ## () and [] pairing
         self.qstack = EL  ## parser quotes
-        self.lstack = []  ## parsed lists
+        self.lstack = EL  ## parsed lists
         self.stab = (  ## this corresponds to the S_* index constants
             self.do_sym,
             self.do_comment,
@@ -730,8 +730,8 @@ class Parser:
             self.sym()
             if self.state not in (self.S_SYM, self.S_COMMENT):
                 raise SyntaxError("eof in {self.state!r}")
-            if self.parens:
-                raise SyntaxError(f"eof expecting {self.parens.pop()!r}")
+            if self.parens is not EL:
+                raise SyntaxError(f"eof expecting {self.parens[0]!r}")
             if self.qstack is not EL:
                 raise SyntaxError("unclosed quasiquote")
             return
@@ -744,16 +744,17 @@ class Parser:
             p = pos[0] = pos[0] + 1  ## re-read in case of comma adjustment
 
     def append(self, x):
-        if self.lstack:
-            self.lstack[-1].append(self.quote_wrap(x))
-        else:
+        if self.lstack is EL:
             self.callback(self.quote_wrap(x))
+        else:
+            self.lstack[0].append(self.quote_wrap(x))
 
     def quote_wrap(self, x):
         qs = self.qstack
         while qs is not EL and qs[0].__class__ is Symbol:
             q, qs = qs
             x = [q, [x, EL]]
+        self.qstack = qs
         return x
 
     def sym(self):
@@ -777,17 +778,20 @@ class Parser:
         if ch in "()[] \n\r\t;\"',`":  ## all of this is actually faster.
             if ch in "([":
                 self.sym()
-                self.parens.append(")" if ch == "(" else "]")  ## faster than a lut
+                ## faster than a lut:
+                self.parens = [")" if ch == "(" else "]", self.parens]
                 self.qstack = [SENTINEL, self.qstack]
-                self.lstack.append(ListBuilder())
+                self.lstack = [ListBuilder(), self.lstack]
             elif ch in ")]":
                 self.sym()
-                if not self.parens:
+                if self.parens is EL:
                     raise SyntaxError(f"too many {ch!r}")
-                if self.parens.pop() != ch:
+                p, self.parens = self.parens
+                if p != ch:
                     raise SyntaxError(f"unexpected {ch!r}")
                 self.qstack = self.qstack[1]
-                self.append(self.lstack.pop().get())
+                lb, self.lstack = self.lstack
+                self.append(lb.get())
             elif ch in " \n\r\t":
                 self.sym()
             elif ch == ";":
@@ -844,7 +848,7 @@ class Parser:
                               ## with feed() without calling getattr()
                               ## on self. yes, it's actually faster.
             q = self.qt[","]
-        self.qstack.append(q)
+        self.qstack = [q, self.qstack]
         self.state = self.S_SYM
 
 
