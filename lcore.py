@@ -17,7 +17,21 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"lcore.py -- lisp core"
+"""
+lcore.py -- lisp core
+
+i am shocked that this krusty coding is so much faster than idiomatic code
+that it's worth keeping. i have fiddled with this a lot, and this is the
+fastest implementation i have been able to create.
+
+there is a central theme here: avoid function calls at all costs. so you'll
+see "x.__class__ is list" instead of "isinstance(x, list)" for example.
+profiling led me to every weird construct in this file. there's very little
+encapsulation here - for speed. it turns out that all the love goes into the
+k_leval_* functions and they're about the only thing worth aggressively
+optimizing. Also, using pairs for the stack is a lot faster than the more
+obvious list.append()/lisp.pop() function calls.
+"""
 
 ## pylint: disable=invalid-name
 ## XXX pylint: disable=missing-docstring
@@ -681,15 +695,10 @@ def k_pv2lv_next(ctx):
 
 
 ## }}}
-## {{{ scanner and Parser
+## {{{ scanner and parser
 
 
 class Parser:
-    """
-    i am shocked that this krusty coding is so much faster than idiomatic code
-    that it's worth keeping. i have fiddled with this class a lot, and this is
-    the fastest implementation i have been able to create.
-    """
 
     S_SYM = 0
     S_COMMENT = 1
@@ -699,15 +708,15 @@ class Parser:
 
     def __init__(self, ctx, callback):
         self.ctx = ctx
+        self.callback = callback
         self.qt = ctx.q  ## quotes and replacements
         self.pos = [0]  ## yup, a list, see feed() and S_COMMA code
         self.token = []
         self.add = self.token.append
         self.parens = []  ## () and [] pairing
-        self.callback = callback
         self.qstack = []  ## parser quotes
         self.lstack = []  ## parsed lists
-        self.stab = (  ## this corresponds to the S_* constants
+        self.stab = (  ## this corresponds to the S_* index constants
             self.do_sym,
             self.do_comment,
             self.do_string,
