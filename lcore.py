@@ -237,7 +237,7 @@ class Context:
         genv[symbol("#t")] = T
         for k, v in G__.items():
             genv[symbol(k)] = v
-        ## quotes for Parser
+        ## quote-to-symbol table
         self.q = {
             "'": self.symbol("quote"),
             ",": self.symbol("unquote"),
@@ -681,27 +681,15 @@ def k_pv2lv_next(ctx):
 
 
 ## }}}
-## {{{ scanner
+## {{{ scanner and Parser
 
 
-class Scanner:
+class Parser:
     """
-    i am shocked that this krusty coding is the fastest. i have fiddled
-    with this class a lot, and this is the fastest implementation i have
-    been able to achieve.
+    i am shocked that this krusty coding is so much faster than idiomatic code
+    that it's worth keeping. i have fiddled with this class a lot, and this is
+    the fastest implementation i have been able to create.
     """
-
-    T_SYM = "symbol"
-    T_INT = "int"
-    T_FLOAT = "float"
-    T_STRING = "string"
-    T_LPAR = "("
-    T_RPAR = ")"
-    T_TICK = "'"
-    T_BACKTICK = "`"
-    T_COMMA = ","
-    T_COMMA_AT = ",@"
-    T_EOF = "eof"
 
     S_SYM = 0
     S_COMMENT = 1
@@ -709,12 +697,16 @@ class Scanner:
     S_ESC = 3
     S_COMMA = 4
 
-    def __init__(self, callback):
-        self.pos = [0]  ## yup, a list
+    def __init__(self, ctx, callback):
+        self.ctx = ctx
+        self.qt = ctx.q  ## quotes and replacements
+        self.pos = [0]  ## yup, a list, see feed() and S_COMMA code
         self.token = []
         self.add = self.token.append
-        self.parens = []
+        self.parens = []  ## () and [] pairing
         self.callback = callback
+        self.qstack = []  ## parser quotes
+        self.lstack = []  ## parsed lists
         self.stab = (  ## this corresponds to the S_* constants
             self.do_sym,
             self.do_comment,
@@ -726,56 +718,70 @@ class Scanner:
 
     def feed(self, text):
         if text is None:
+            self.sym()
             if self.state not in (self.S_SYM, self.S_COMMENT):
                 raise SyntaxError("eof in {self.state!r}")
             if self.parens:
                 raise SyntaxError(f"eof expecting {self.parens.pop()!r}")
-            self.push(self.T_SYM)
-            self.push(self.T_EOF)
+            if self.qstack:
+                raise SyntaxError("unclosed quasiquote")
             return
-        self.pos[0], n = 0, len(text)
-        pos, stab = self.pos, self.stab
-        p = 0
+        pos = self.pos
+        n = len(text)
+        stab = self.stab
+        p = pos[0] = 0
         while p < n:
             stab[self.state](text[p])
-            p = pos[0] = pos[0] + 1
+            p = pos[0] = pos[0] + 1  ## re-read in case of comma adjustment
 
-    def push(self, ttype):
+    def append(self, x):
+        if self.lstack:
+            self.lstack[-1].append(self.quote_wrap(x))
+        else:
+            self.callback(self.quote_wrap(x))
+
+    def quote_wrap(self, x):
+        qs = self.qstack
+        while qs and qs[-1].__class__ is Symbol:
+            x = [qs.pop(), [x, EL]]
+        return x
+
+    def sym(self):
         if self.token:
             t = "".join(self.token)
-            self.token.clear()
-            if ttype == self.T_SYM and t[0] in "0123456789-.+":
+            self.token.clear()  ## faster than del[:]
+            if t[0].lower() in "0123456789-.+abcdef":
                 try:
                     t = int(t, 0)
-                    ttype = self.T_INT
                 except ValueError:
                     try:
                         t = float(t)
-                        ttype = self.T_FLOAT
                     except:  ## pylint: disable=bare-except
-                        pass
-            self.callback(ttype, t)
-        elif ttype != self.T_SYM:
-            self.callback(ttype, None)
+                        t = self.ctx.symbol(t)
+            else:
+                t = self.ctx.symbol(t)
+            self.append(t)
 
     def do_sym(self, ch):
         ## pylint: disable=too-many-branches
         if ch in "()[] \n\r\t;\"',`":  ## all of this is actually faster.
             if ch in "([":
-                self.parens.append(")" if ch == "(" else "]")
-                self.push(self.T_SYM)
-                self.push(self.T_LPAR)
+                self.sym()
+                self.parens.append(")" if ch == "(" else "]")  ## faster than a lut
+                self.qstack.append(SENTINEL)
+                self.lstack.append(ListBuilder())
             elif ch in ")]":
+                self.sym()
                 if not self.parens:
                     raise SyntaxError(f"too many {ch!r}")
                 if self.parens.pop() != ch:
                     raise SyntaxError(f"unexpected {ch!r}")
-                self.push(self.T_SYM)
-                self.push(self.T_RPAR)
+                del self.qstack[-1]
+                self.append(self.lstack.pop().get())
             elif ch in " \n\r\t":
-                self.push(self.T_SYM)
+                self.sym()
             elif ch == ";":
-                self.push(self.T_SYM)
+                self.sym()
                 self.state = self.S_COMMENT
             else:
                 ## less common cases that aren't delimiters: ["] ['] [,] [`]
@@ -784,13 +790,10 @@ class Scanner:
                 if ch == '"':
                     self.state = self.S_STRING
                     return
-                self.add(ch)
-                if ch == "'":
-                    self.push(self.T_TICK)
-                elif ch == ",":
-                    self.state = self.S_COMMA
+                if ch in "'`":
+                    self.qstack.append(self.qt[ch])
                 else:
-                    self.push(self.T_BACKTICK)
+                    self.state = self.S_COMMA
         else:
             self.add(ch)
 
@@ -800,7 +803,8 @@ class Scanner:
 
     def do_string(self, ch):
         if ch == '"':
-            self.push(self.T_STRING)
+            self.append("".join(self.token))
+            self.token.clear()  ## faster than del[:]
             self.state = self.S_SYM
         elif ch == "\\":
             self.state = self.S_ESC
@@ -824,56 +828,13 @@ class Scanner:
 
     def do_comma(self, ch):
         if ch == "@":
-            self.add("@")
-            self.push(self.T_COMMA_AT)
+            self.qstack.append(self.qt[",@"])
         else:
-            self.pos[0] -= 1
-            self.push(self.T_COMMA)
+            self.pos[0] -= 1  ## pos is a list so it can communicate
+                              ## with feed() without calling getattr()
+                              ## on self. yes, it's actually faster.
+            self.qstack.append(self.qt[","])
         self.state = self.S_SYM
-
-
-## }}}
-## {{{ parser
-
-
-class Parser:
-    def __init__(self, ctx, callback):
-        self.ctx = ctx
-        self.callback = callback
-        self.stack = []
-        self.qstack = []
-        self.scanner = Scanner(self.process_token)
-        self.feed = self.scanner.feed
-
-    def process_token(self, ttype, token):
-        s = self.scanner
-        if ttype == s.T_SYM:
-            self.add(self.ctx.symbol(token))
-        elif ttype == s.T_LPAR:
-            self.qstack.append(SENTINEL)
-            self.stack.append(ListBuilder())
-        elif ttype == s.T_RPAR:
-            del self.qstack[-1]
-            self.add(self.stack.pop().get())
-        elif ttype in (s.T_INT, s.T_FLOAT, s.T_STRING):
-            self.add(token)
-        elif ttype in (s.T_TICK, s.T_COMMA, s.T_COMMA_AT, s.T_BACKTICK):
-            self.qstack.append(self.ctx.q[token])
-        else:  ## EOF
-            assert not self.stack  ## Scanner checks this
-            if self.qstack:
-                raise SyntaxError("unclosed quasiquote")
-
-    def add(self, x):
-        if self.stack:
-            self.stack[-1].append(self.quote_wrap(x))
-        else:
-            self.callback(self.quote_wrap(x))
-
-    def quote_wrap(self, x):
-        while self.qstack and self.qstack[-1].__class__ is Symbol:
-            x = [self.qstack.pop(), [x, EL]]
-        return x
 
 
 ## }}}
