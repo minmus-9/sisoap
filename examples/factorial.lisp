@@ -18,8 +18,6 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; NB this only works with lisp04-trampolined-fancy/lisp.py lisp/lisp04.lisp
-
 (define (!1 n)
     (if
         (define n! 1)

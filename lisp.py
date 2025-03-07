@@ -51,7 +51,6 @@ from lcore import (
     symcheck,
 )
 
-
 ## }}}
 ## {{{ helpers
 
@@ -382,13 +381,14 @@ def op_atom_f(x):
 @glbl("begin")
 @glbl("do")
 def op_do(ctx):
-    ctx.val = EL
+    val = EL
     args = ctx.argl
     try:
         while args is not EL:
-            ctx.val, args = args
+            val, args = args
     except TypeError:
         raise SyntaxError("expected list") from None
+    ctx.val = val
     return ctx.cont
 
 
@@ -419,6 +419,7 @@ def op_cons(ctx):
     return binary(ctx, cons)
 
 
+@glbl("/")
 @glbl("div")
 def op_div(ctx):
     return binary(ctx, op_div_f)
@@ -1290,7 +1291,7 @@ RUNTIME = r"""
     (cond
         ((lt? x y) (gcd y x))
         ((equal? x 0) 1)
-        (#t ( do
+        (#t
             (define c (call/cc (lambda (cc) cc)))
             (if
                 (equal? y 0)
@@ -1302,7 +1303,7 @@ RUNTIME = r"""
                     (c c)
                 )
             )
-        ))
+        )
     )
 )
 
@@ -1310,36 +1311,26 @@ RUNTIME = r"""
 ;; {{{ smul
 
 ;; signed integer multiplication from subtraction and right shift (division)
-(define umul (lambda (x y accum)
-    ((lambda (c)
-        (if
-            (equal? 0 x)
-            accum
-            ((lambda (& _) (c c))
-                (if
-                    (equal? (band x 1) 1)
-                    (set! accum (add accum y))
-                    ()
-                )
-                (set! x (div x 2))
-                (set! y (mul y 2))
-            )
-        )
-    ) (call/cc (lambda (cc) cc)))
-))
-
-(define smul (lambda (x y) (do
-    (define sign 1)
-    (if (lt? x 0) (set! sign (neg sign)) ())
-    (if (lt? y 0) (set! sign (neg sign)) ())
-    (cond
-        ((equal? x 0)       0)
-        ((equal? y 0)       0)
-        ((equal? (abs y) 1) (copysign x sign))
-        ((lt? y x)          (copysign (umul (abs y) (abs x) 0) sign))
-        (#t                 (copysign (umul (abs x) (abs y) 0) sign))
+(define (umul x y accum)
+    (if
+        (equal? x 0)
+        accum
+        (umul (/ x 2) (+ y y) (+ accum (if (equal? (band x 1) 1) y 0)))
     )
-)))
+)
+
+(define (smul x y)
+    (define sign 1)
+    (if (lt? x 0) (set! sign (- 0 sign)) ())
+    (if (lt? y 0) (set! sign (- 0 sign)) ())
+    (set! x (abs x))
+    (set! y (abs y))
+    (if
+        (lt? y x)
+        (copysign (umul y x 0) sign)
+        (copysign (umul x y 0) sign)
+    )
+)
 
 ;; }}}
 

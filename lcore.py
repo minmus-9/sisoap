@@ -183,12 +183,12 @@ def create_environment(ctx, params, args, parent):
 ## {{{ decorators and global decl table
 
 
-__G = {}
+G__ = {}
 
 
 def glbl(name):
     def wrap(func):
-        __G[name] = func
+        G__[name] = func
         func.special = func.ffi = False
         return func
 
@@ -197,7 +197,7 @@ def glbl(name):
 
 def spcl(name):
     def wrap(func):
-        __G[name] = func
+        G__[name] = func
         func.special = True
         func.ffi = False
         return func
@@ -207,21 +207,12 @@ def spcl(name):
 
 def ffi(name):
     def wrap(func):
-        __G[name] = func
+        G__[name] = func
         func.special = False
         func.ffi = True
         return func
 
     return wrap
-
-
-def create_global_env(ctx):
-    symbol = ctx.symbol
-    genv = create_environment(ctx, EL, EL, SENTINEL)
-    genv[symbol("#t")] = T
-    for k, v in __G.items():
-        genv[symbol(k)] = v
-    return genv
 
 
 ## }}}
@@ -231,7 +222,7 @@ def create_global_env(ctx):
 class Context:
     ## pylint: disable=too-many-instance-attributes
 
-    __slots__ = ("argl", "cont", "env", "exp", "val", "s", "symbol", "g")
+    __slots__ = ("argl", "cont", "env", "exp", "val", "s", "symbol", "g", "q")
 
     def __init__(self):
         ## registers
@@ -241,7 +232,18 @@ class Context:
         ## symbols
         self.symbol = create_symbol_table()
         ## global env
-        self.g = create_global_env(self)
+        symbol = self.symbol
+        self.g = genv = create_environment(self, EL, EL, SENTINEL)
+        genv[symbol("#t")] = T
+        for k, v in G__.items():
+            genv[symbol(k)] = v
+        ## quotes for Parser
+        self.q = {
+            "'": self.symbol("quote"),
+            ",": self.symbol("unquote"),
+            ",@": self.symbol("unquote-splicing"),
+            "`": self.symbol("quasiquote"),
+        }
 
     ## top level
 
@@ -679,13 +681,14 @@ def k_pv2lv_next(ctx):
 
 
 ## }}}
-## {{{ scanner #5: state-based, no lut
+## {{{ scanner
 
 
 class Scanner:
     """
     i am shocked that this krusty coding is the fastest. i have fiddled
-    with this class a lot, and this is the fastest implementation i know.
+    with this class a lot, and this is the fastest implementation i have
+    been able to achieve.
     """
 
     T_SYM = "symbol"
@@ -830,7 +833,7 @@ class Scanner:
 
 
 ## }}}
-## {{{ parser #2: inlined
+## {{{ parser
 
 
 class Parser:
@@ -841,40 +844,31 @@ class Parser:
         self.qstack = []
         self.scanner = Scanner(self.process_token)
         self.feed = self.scanner.feed
-        self.qt = {
-            "'": ctx.symbol("quote"),
-            ",": ctx.symbol("unquote"),
-            ",@": ctx.symbol("unquote-splicing"),
-            "`": ctx.symbol("quasiquote"),
-        }
 
     def process_token(self, ttype, token):
         s = self.scanner
         if ttype == s.T_SYM:
             self.add(self.ctx.symbol(token))
         elif ttype == s.T_LPAR:
-            self.qstack.append(")")
+            self.qstack.append(SENTINEL)
             self.stack.append(ListBuilder())
         elif ttype == s.T_RPAR:
             del self.qstack[-1]
-            l = self.quote_wrap(self.stack.pop().get())
-            if self.stack:
-                self.add(l)
-            else:
-                self.callback(l)
+            self.add(self.stack.pop().get())
         elif ttype in (s.T_INT, s.T_FLOAT, s.T_STRING):
             self.add(token)
         elif ttype in (s.T_TICK, s.T_COMMA, s.T_COMMA_AT, s.T_BACKTICK):
-            self.qstack.append(self.qt[token])
+            self.qstack.append(self.ctx.q[token])
         else:  ## EOF
             assert not self.stack  ## Scanner checks this
             if self.qstack:
                 raise SyntaxError("unclosed quasiquote")
 
     def add(self, x):
-        if not self.stack:
-            raise SyntaxError(f"expected '(' got {x!r}")
-        self.stack[-1].append(self.quote_wrap(x))
+        if self.stack:
+            self.stack[-1].append(self.quote_wrap(x))
+        else:
+            self.callback(self.quote_wrap(x))
 
     def quote_wrap(self, x):
         while self.qstack and self.qstack[-1].__class__ is Symbol:
