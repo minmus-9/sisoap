@@ -20,9 +20,30 @@ About 18 months later while on vacation, I woke up one morning
 my implentation language, and soon had a simple recursive
 implementation up and running. Turns out that you can't do too
 much with a pure-recursive Python LISP unless you introduce
-abominations like `(while)` and do thing iteratively. Which sort
-of defeats the purpose of the whole exercise.
+abominations like `(while)` and do things iteratively. Which
+sort of defeats the purpose of the whole exercise. But it was
+enough to get started reading SICP and I was hooked. On to
+CPS!
 
+It took a while to get used to CPS. After about 20 independent
+rewrites of various approaches to the problem, the code is in
+its present fully trampolined form with some amount of
+tail-call optimization (TCO); I'm still not sure if there's
+more work to do there. Anyway, consider this code as a digital
+pensieve of how trampolines and CPS work.
+
+Meanwhile, SICP melted my brain. *Everyone* should consider
+reading this book at least once. The code in this repo is a
+from-scratch implementation of the material in Chapter 5, but
+written in Python instead of Scheme. It's been a joyful
+experience to watch it unfold!
+
+## Running the Code
+
+```
+./lisp.py examples/factorial.lisp  ## to run code from a file
+./lisp.py -                        ## for a REPL
+```
 
 ## License
 
