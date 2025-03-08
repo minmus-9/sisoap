@@ -78,14 +78,12 @@ try:
     _ = proc.__call__
     [do something with callable proc]
 except AttributeError:
-    [do something else with non-callable "proc"]
+    pass
 ```
 instead of
 ```
 if callable(proc):
     [do something with callable proc]
-else:
-    [do something else with non-callable "proc"]
 ```
 and
 ```
@@ -96,6 +94,34 @@ instead of
 ```
 if isinstance(x, list):
     [do something]
+```
+
+What's happening here is the elimination of Python function/method
+calls *at all costs*; in particular, at the cost of readability :D
+Function calls are so expensive that eliminating them can give you
+a 100% speedup (Python 3.10.12 on Pop-OS! 22.04 LTS).
+
+Pairs are represented as 2-lists so `cons(x, y)` is `[x, y]`. This,
+or its equivalent, is about the only thing that works with the
+mutators `set-car!` and `set-cdr!`. In particular, using regular
+Python lists as LISP lists breaks when you get to `set-cdr!`.
+
+The runtime stack is also implented as a LISP linked list of pairs.
+This is almost twice as fast as using the `list.append()` and
+`lisp.pop()` methods (pronounced *function calls*). You get the
+idea.
+
+The `Context` class provides `.push()` and `.pop()` methods but
+doesn't use them internally. The `leval()` family of functions
+inlines all of the stack operations for speed; this code needs all
+the help it can get, speed-wise. You'll see a ton of things like
+```
+ctx.s = [x, ctx.s]  ## push(x)
+```
+and
+```
+ret, ctx.s = ctx.s
+return ret  ## pop()
 ```
 
 ## License
