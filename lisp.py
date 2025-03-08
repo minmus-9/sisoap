@@ -56,17 +56,66 @@ from lcore import (
 
 
 def unary(ctx, f):
-    ctx.val = f(ctx.unpack1())
+    try:
+        x, a = ctx.argl
+        if a is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected one arg") from None
+    ctx.val = f(x)
     return ctx.cont
 
 
 def binary(ctx, f):
-    ctx.val = f(*ctx.unpack2())
+    a = ctx.argl
+    try:
+        x, a = a
+        y, a = a
+        if a is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected two args") from None
+    ctx.val = f(x, y)
     return ctx.cont
 
 
 ## }}}
 ## {{{ special forms
+
+
+@spcl("begin")
+@spcl("do")
+def op_begin(ctx):
+    args = ctx.argl
+    if args is EL:
+        ctx.val = EL
+        return ctx.cont
+    ctx.push_ce()
+    try:
+        ctx.exp, args = args
+    except TypeError:
+        raise SyntaxError("expected list") from None
+    if args is EL:
+        ctx.pop_ce()
+    else:
+        ctx.push(args)
+        ctx.cont = op_begin_next
+    return k_leval
+
+
+def op_begin_next(ctx):
+    args = ctx.pop()
+    ctx.env = ctx.top()
+    try:
+        ctx.exp, args = args
+    except TypeError:
+        raise SyntaxError("expected list") from None
+    if args is EL:
+        ctx.pop_ce()
+    else:
+        ctx.push(args)
+        ctx.cont = op_begin_next
+    return k_leval
 
 
 @spcl("cond")
@@ -93,7 +142,7 @@ def op_cond_setup(ctx, args):
     if cdr(c) is EL:
         c = car(c)
     else:
-        c = cons(ctx.symbol("do"), c)
+        c = cons(ctx.symbol("begin"), c)
     ctx.push(c)
     ctx.push(args)
     ctx.cont = op_cond_next
@@ -123,7 +172,7 @@ def op_define(ctx):
         if cdr(body) is EL:
             body = car(body)
         else:
-            body = cons(ctx.symbol("do"), body)
+            body = cons(ctx.symbol("begin"), body)
         ctx.env[symcheck(sym)] = create_lambda(params, body, ctx.env)
         ctx.val = EL
         return ctx.cont
@@ -173,7 +222,7 @@ def op_lambda(ctx):
     if cdr(body) is EL:
         body = car(body)
     else:
-        body = cons(ctx.symbol("do"), body)
+        body = cons(ctx.symbol("begin"), body)
     ctx.val = create_lambda(params, body, ctx.env)
     return ctx.cont
 
@@ -221,7 +270,7 @@ def op_special(ctx):
         if cdr(body) is EL:
             body = car(body)
         else:
-            body = cons(ctx.symbol("do"), body)
+            body = cons(ctx.symbol("begin"), body)
         lam = create_lambda(params, body, ctx.env)
         lam.special = True
         ctx.env[symcheck(sym)] = lam
@@ -376,20 +425,6 @@ def op_atom(ctx):
 
 def op_atom_f(x):
     return T if is_atom(x) else EL
-
-
-@glbl("begin")
-@glbl("do")
-def op_do(ctx):
-    val = EL
-    args = ctx.argl
-    try:
-        while args is not EL:
-            val, args = args
-    except TypeError:
-        raise SyntaxError("expected list") from None
-    ctx.val = val
-    return ctx.cont
 
 
 @glbl("call/cc")
@@ -712,91 +747,35 @@ RUNTIME = r"""
 ;; {{{ basics
 
 ;; to accompany quasiquote
-(define unquote (lambda (x) (error "cannot unquote here")))
-(define unquote-splicing (lambda (x) (error "cannot unquote-splicing here")))
+(define (unquote x) (error "cannot unquote here"))
+(define (unquote-splicing x) (error "cannot unquote-splicing here"))
 
 ;; used everywhere
-(define pair? (lambda (x) (if (eq? (type x) 'pair) #t ())))
-(define list  (lambda (& args) args))
+(define (pair? x) (if (eq? (type x) 'pair) #t ()))
+(define (list & args) args)
 
 ;; ditto
-(define cadr (lambda (l) (car (cdr l))))
-(define caddr (lambda (l) (car (cdr (cdr l)))))
-(define cadddr (lambda (l) (car (cdr (cdr (cdr l))))))
-(define caddddr (lambda (l) (car (cdr (cdr (cdr (cdr l)))))))
-
-;; }}}
-;; {{{ begin
-
-(define begin do)
+(define (cadr l) (car (cdr l)))
+(define (caddr l) (car (cdr (cdr l))))
+(define (cadddr l) (car (cdr (cdr (cdr l)))))
+(define (caddddr l) (car (cdr (cdr (cdr (cdr l))))))
 
 ;; }}}
 ;; {{{ foreach
-;; call f for each element of lst
+;; call f for each element of lst, returns ()
 
-(define foreach (lambda (f lst) ( do
+(define (foreach f lst)
     (define c (call/cc (lambda (cc) cc)))
     (if
         (null? lst)
         ()
-        ( do
+        (begin
             (f (car lst))
             (set! lst (cdr lst))
             (c c)
         )
     )
-)))
-
-;; }}}
-;; {{{ list-builder
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; dingus to build a list by appending in linear time. it's an ad-hoc queue
-
-(define list-builder (lambda () ( do
-    (define ht (list () ()))
-    (define add (lambda (x) ( do
-        (define node (cons x ()))
-        (if
-            (null? (car ht))
-            ( do
-                (set-car! ht node)
-                (set-cdr! ht node)
-            )
-            ( do
-                (set-cdr! (cdr ht) node)
-                (set-cdr! ht node)
-            )
-        )
-        dispatch
-    )))
-    (define dispatch (lambda (op & args)
-        (if
-            (eq? op 'add)
-            (if
-                (null? (cdr args))
-                (add (car args))
-                (error "add takes a single arg")
-            )
-            (if
-                (eq? op 'extend)
-                (if
-                    (null? (cdr args))
-                    ( do
-                        (foreach add (car args))
-                        dispatch
-                    )
-                    (error "extend takes a single list arg")
-                )
-                (if
-                    (eq? op 'get)
-                    (car ht)
-                    (error "unknown command")
-                )
-            )
-        )
-    ))
-    dispatch
-)))
+)
 
 ;; }}}
 ;; {{{ bitwise ops
@@ -862,46 +841,46 @@ RUNTIME = r"""
 ;; }}}
 ;; {{{ and or not
 
-(special and (lambda (& __special_and_args__)
+(special (and & __special_and_args__)
     ((lambda (c)
         (cond
             ((null? __special_and_args__) ())
             ((null? (cdr __special_and_args__))
                 (eval (car __special_and_args__)))
-            ((eval (car __special_and_args__)) ( do
+            ((eval (car __special_and_args__)) (begin
                 (set! __special_and_args__ (cdr __special_and_args__))
                 (c c)
             ))
             (#t ())
         )
     ) (call/cc (lambda (cc) cc)) )
-))
+)
 
-(special or (lambda (& __special_or_args__)
+(special (or & __special_or_args__)
     ((lambda (c)
         (cond
             ((null? __special_or_args__) ())
             ((eval (car __special_or_args__)) #t)
-            (#t ( do
+            (#t (begin
                 (set! __special_or_args__ (cdr __special_or_args__))
                 (c c)
             ))
         )
     ) (call/cc (lambda (cc) cc)) )
-))
+)
 
 (define (not x) (if (eq? x ()) #t ()))
 
 ;; }}}
 ;; {{{ assert
 
-(special assert (lambda (__special_assert_sexpr__)
+(special (assert __special_assert_sexpr__)
     (if
         (eval __special_assert_sexpr__)
         ()
         (error (>string __special_assert_sexpr__))
     )
-))
+)
 
 ;; }}}
 ;; {{{ reverse
@@ -912,7 +891,7 @@ RUNTIME = r"""
     (if
         (null? l)
         r
-        ( do
+        (begin
             (set! r (cons (car l) r))
             (set! l (cdr l))
             (c c)
@@ -920,40 +899,51 @@ RUNTIME = r"""
     )
 )
 
+(define (reverse l)
+    (define (rev x y)
+        (if
+            (null? x)
+            y
+            (rev (cdr x) (cons (car x) y))
+        )
+    )
+    (rev l ())
+)
+
 ;; }}}
 ;; {{{ iter and enumerate
 
 (define (iter lst fin)
     (define item ())
-    (define next (lambda ()
+    (define (next)
         (if
             (null? lst)
             fin
-            (do
+            (begin
                     (set! item (car lst))
                     (set! lst (cdr lst))
                     item
             )
         )
-    ))
+    )
     next
 )
 
 (define (enumerate lst fin)
     (define index 0)
     (define item fin)
-    (define next (lambda ()
+    (define (next)
         (if
             (null? lst)
             fin
-            (do
+            (begin
                     (set! item (list index (car lst)))
                     (set! index (add index 1))
                     (set! lst (cdr lst))
                     item
             )
         )
-    ))
+    )
     next
 )
 
@@ -966,7 +956,7 @@ RUNTIME = r"""
     (if
         (null? l)
         n
-        ( do
+        (begin
             (set! n (add n 1))
             (set! l (cdr l))
             (c c)
@@ -1004,7 +994,7 @@ RUNTIME = r"""
     (if
         (null? (car sequences))
         (reverse r)
-        ( do
+        (begin
             (set! r (cons (accumulate f initial (map1 car sequences)) r))
             (set! sequences (map1 cdr sequences))
             (c c)
@@ -1023,11 +1013,32 @@ RUNTIME = r"""
 ;; {{{ join
 
 (define (join x y)
-    (cond
-        ((null? x) y)
-        ((null? y) x)
-        ((null? (cdr x)) (cons (car x) y))
-        (#t (fold-right cons (fold-right cons () y) x))
+    (if
+        (null? x)
+        y
+        (begin
+            (define ht (join$start (car x)))
+            (join$1 (cdr x) ht)
+            (join$1 y ht)
+        )
+    )
+)
+
+(define (join$start x)
+    (define n (cons x ()))
+    (cons n n)
+)
+
+(define (join$1 x ht)
+    (if
+        (null? x)
+        (car ht)
+        (begin
+            (define n (cons (car x) ()))
+            (set-cdr! (cdr ht) n)
+            (set-cdr! ht n)
+            (join$1 (cdr x) ht)
+        )
     )
 )
 
@@ -1043,7 +1054,7 @@ RUNTIME = r"""
             ((eq? op (quote enqueue))
                 (if
                     (equal? (length args ) 1)
-                    ( do
+                    (begin
                         (define node (cons (car args) ()))
                         (if
                             (null? h)
@@ -1064,7 +1075,7 @@ RUNTIME = r"""
                             (error "queue is empty")
                             ( let (
                                 (ret (car h)))
-                                (do
+                                (begin
                                     (set! h (cdr h))
                                     (if (null? h) (set! t ()) ())
                                     ret
@@ -1078,7 +1089,7 @@ RUNTIME = r"""
             ((eq? op (quote enqueue-many))
                 (if
                     (and (equal? (length args) 1) (pair? (car args)))
-                    ( do
+                    (begin
                         (foreach enqueue (car args))
                         dispatch
                     )
@@ -1095,8 +1106,8 @@ RUNTIME = r"""
 ;; }}}
 ;; {{{ let
 
-(special let (lambda (__special_let_vdefs__ __special_let_body__)
-    (eval (let$ __special_let_vdefs__ __special_let_body__) 1)))
+(special (let __special_let_vdefs__ __special_let_body__)
+    (eval (let$ __special_let_vdefs__ __special_let_body__) 1))
 
 (define (let$ vdefs body)
     (define vdecls (transpose vdefs))
@@ -1108,14 +1119,14 @@ RUNTIME = r"""
 ;; }}}
 ;; {{{ let*
 
-(special let* (lambda (__special_lets_vdefs__ __special_lets_body__)
-    (eval (let*$ __special_lets_vdefs__ __special_lets_body__) 1)))
+(special (let* __special_lets_vdefs__ __special_lets_body__)
+    (eval (let*$ __special_lets_vdefs__ __special_lets_body__) 1))
 
 (define (let*$ vdefs body)
     (if
         (null? vdefs)
         body
-        ( do
+        (begin
             (define kv (car vdefs))
             (set! vdefs (cdr vdefs))
             (define k (car kv))
@@ -1129,8 +1140,8 @@ RUNTIME = r"""
 ;; {{{ letrec
 ;; i saw this (define x ()) ... (set! x value) on stackoverflow somewhere
 
-(special letrec (lambda (__special_letrec_decls__ __special_letrec_body__)
-    (eval (letrec$ __special_letrec_decls__ __special_letrec_body__) 1)))
+(special (letrec __special_letrec_decls__ __special_letrec_body__)
+    (eval (letrec$ __special_letrec_decls__ __special_letrec_body__) 1))
 
 (define (letrec$ decls & body)
     (define names (map1 car decls))
@@ -1139,7 +1150,7 @@ RUNTIME = r"""
     (define (initialize var-value) `(set! ,(car var-value) ,(cadr var-value)))
     (define (declare-all) (map1 declare names))
     (define (initialize-all) (map1 initialize decls))
-    `((lambda () ( do ,@(declare-all) ,@(initialize-all) ,@body)))
+    `((lambda () (begin ,@(declare-all) ,@(initialize-all) ,@body)))
 )
 
 ;; }}}
@@ -1151,7 +1162,7 @@ RUNTIME = r"""
         (cond
             ((eq? m 'known) (not (null? (table$find items key compare))))
             ((eq? m 'del) (set! items (table$delete items (car args) compare)))
-            ((eq? m 'get) ( do
+            ((eq? m 'get) (begin
                 (let* (
                     (key (car args))
                     (node (table$find items key compare)))
@@ -1162,13 +1173,13 @@ RUNTIME = r"""
                     )
                 )
             ))
-            ((eq? m 'iter) ( do
+            ((eq? m 'iter) (begin
                 (let ((lst items))
                     (lambda ()
                         (if
                             (null? lst)
                             ()
-                            ( do
+                            (begin
                                 (define ret (car lst))
                                 (set! lst (cdr lst))
                                 ret
@@ -1179,14 +1190,14 @@ RUNTIME = r"""
             ))
             ((eq? m 'len) (length items))
             ((eq? m 'raw) items)
-            ((eq? m 'set) ( do
+            ((eq? m 'set) (begin
                 (let* (
                     (key (car args))
                     (value (cadr args))
                     (node (table$find items key compare)))
                     (if
                         (null? node)
-                        ( do
+                        (begin
                             (let* (
                                 (node (cons key (cons value ()))))
                                 (set! items (cons node items)))
@@ -1214,13 +1225,13 @@ RUNTIME = r"""
     (define (helper assoc key)
         (cond
             ((null? assoc) items)
-            ((compare (car (car assoc)) key) (do
+            ((compare (car (car assoc)) key) (begin
                 (cond
                     ((null? prev) (cdr assoc))
-                    (#t (do (set-cdr! prev (cdr assoc)) items))
+                    (#t (begin (set-cdr! prev (cdr assoc)) items))
                 )
             ))
-            (#t ( do
+            (#t (begin
                 (set! prev assoc)
                 (helper (cdr assoc) key)
             ))
@@ -1241,15 +1252,19 @@ RUNTIME = r"""
 
 ;; call f a given number of times as (f counter)
 (define (for f start stop step)
-    (if (lt? step 1) (error "step must be positive") ())
-    (define i start)
-    (define c (call/cc (lambda (cc) cc)))
     (if
-        (lt? i stop)
-        ( do
-            (f i)
-            (set! i (add i step))
-            (c c)
+        (< step 1)
+        (error "step must be positive")
+        (for$ f start stop step)
+    )
+)
+
+(define (for$ f start stop step)
+    (if
+        (< start stop)
+        (begin
+            (f start)
+            (for$ f (- start (- 0 step)) stop step)
         )
         ()
     )
@@ -1263,7 +1278,7 @@ RUNTIME = r"""
     (if
         (lt? n 1)
         x0
-        (do
+        (begin
             (set! x0 (f x0))
             (set! n (sub n 1))
             (c c)
@@ -1296,7 +1311,7 @@ RUNTIME = r"""
             (if
                 (equal? y 0)
                 x
-                ( do
+                (begin
                     (define r (mod x y))
                     (set! x y)
                     (set! y r)
@@ -1304,31 +1319,6 @@ RUNTIME = r"""
                 )
             )
         )
-    )
-)
-
-;; }}}
-;; {{{ smul
-
-;; signed integer multiplication from subtraction and right shift (division)
-(define (umul x y accum)
-    (if
-        (equal? x 0)
-        accum
-        (umul (/ x 2) (+ y y) (+ accum (if (equal? (band x 1) 1) y 0)))
-    )
-)
-
-(define (smul x y)
-    (define sign 1)
-    (if (lt? x 0) (set! sign (- 0 sign)) ())
-    (if (lt? y 0) (set! sign (- 0 sign)) ())
-    (set! x (abs x))
-    (set! y (abs y))
-    (if
-        (lt? y x)
-        (copysign (umul y x 0) sign)
-        (copysign (umul x y 0) sign)
     )
 )
 

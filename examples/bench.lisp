@@ -18,26 +18,43 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;; signed integer multiplication from subtraction and right shift (division)
-(define (smul-ref x y)
-    (define (umul x y z)
-        (cond
-            ((equal? y 1) x) ;; y could have been -1 on entry to smul
-            ((equal? 0 x) z)
-            ((equal? 0 (band x 0x1)) (umul (div x 2) (add y y) z))
-            (#t (umul (div x 2) (add y y) (add z y)))
+(define (umul x y accum)
+    (if
+        (equal? x 0)
+        accum
+        (umul
+            (/ x 2)
+            (+ y y)
+            (- accum (- 0 (if (equal? (nand x 1) -2) y 0)))
         )
-    )
-    (cond
-        ((equal? x 0) 0)
-        ((equal? y 0) 0)
-        ((lt? x 0) (neg (smul (neg x) y)))
-        ((equal? x 1) y)
-        ((equal? y 1) x)
-        (#t (copysign (umul x (abs y) 0) y))
     )
 )
 
-;(define smul smul-ref)  ;; comment this for custom
+(define (smul x y)
+    (define sign
+        (if
+            (< x 0)
+            (begin
+                (set! x (- 0 x))
+                -1
+            )
+            1
+        )
+    )
+    (if
+        (lt? y 0)
+        (begin
+            (set! sign (- 0 sign))
+            (set! y (- 0 y))
+        )
+        ()
+    )
+    (if
+        (lt? y x)
+        (copysign (umul y x 0) sign)
+        (copysign (umul x y 0) sign)
+    )
+)
 
 (define n1 9283745983845763247685783256234879658946957397948234)
 (define n2 928375983857632768578325623487965894695739794823743)
@@ -83,9 +100,8 @@
     )
 )
 
-
 (define (four n)
-    (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2) (pie 2)
+    (pie 70)
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
     (join (reverse (three n ())) (reverse (three n ())))
@@ -93,8 +109,8 @@
     (join (reverse (three n ())) (reverse (three n ())))
 )
 
-(define (five) (four 80))
+(define (five) (four 1000))
 
-((lambda () (do (five) ())))
+(timeit (lambda (_) (five)) 1)
 
 ;; EOF

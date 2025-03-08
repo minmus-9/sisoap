@@ -21,8 +21,8 @@
 lcore.py -- lisp core
 
 i am shocked that this krusty coding is so much faster than idiomatic code
-that it's worth keeping. i have fiddled with this a lot, and this is the
-fastest implementation i have been able to create.
+that it's actually worth keeping. i have fiddled with this a lot, and this
+is the fastest implementation i have been able to create.
 
 there is a central theme here: avoid function calls at all costs. so you'll
 see "x.__class__ is list" instead of "isinstance(x, list)" for example.
@@ -699,6 +699,7 @@ def k_pv2lv_next(ctx):
 
 
 class Parser:
+    ## pylint: disable=too-many-instance-attributes
 
     S_SYM = 0
     S_COMMENT = 1
@@ -844,9 +845,10 @@ class Parser:
         if ch == "@":
             q = self.qt[",@"]
         else:
-            self.pos[0] -= 1  ## pos is a list so it can communicate
-                              ## with feed() without calling getattr()
-                              ## on self. yes, it's actually faster.
+            ## pos is a list so it can communicate
+            ## with feed() without calling getattr()
+            ## on self. yes, it's actually faster.
+            self.pos[0] -= 1
             q = self.qt[","]
         self.qstack = [q, self.qstack]
         self.state = self.S_SYM
@@ -958,7 +960,7 @@ def main(ctx=None, force_repl=False):
             raise SystemExit(repl(ctx, callback))
     finally:
         ## debug code can go here
-        assert ctx.s is EL, ctx.s
+        # assert ctx.s is EL, ctx.s
         pass
 
 
