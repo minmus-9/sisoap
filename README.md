@@ -114,7 +114,7 @@ idea.
 The `Context` class provides `.push()` and `.pop()` methods but
 doesn't use them internally. The `leval()` family of functions
 inlines all of the stack operations for speed; this code needs all
-the help it can get, speed-wise. You'll see a ton of things like
+the help it can get, speed-wise. You'll see things like
 ```
 ctx.s = [x, ctx.s]  ## push(x)
 ```
@@ -123,6 +123,17 @@ and
 ret, ctx.s = ctx.s
 return ret  ## pop()
 ```
+all over the place in `lcore.py`.
+
+The code in `lisp.py` is a bit more traditional and idiomatic. It
+uses `.push()`, `.pop()`, `car()`, `cdr()`, and so on to enhance
+clarity and let you focus on *what* is going on instead of *how*
+it's happening. The `unary()` and `binary()` helper functions are
+optimized because they're used so much.
+
+As a final note, passing circular data structures into the core
+will definitely cause infinite loops. Fixing this would have a
+grave performance impact and so this hasn't been done.
 
 ## License
 
