@@ -61,7 +61,7 @@
     (define (inner)
         (if
             (equal? d d1)
-            (do
+            (begin
                 ;(print d)
                 (set! a  (mul 10 (mod a b)))
                 (set! a1 (mul 10 (mod a1 b1)))

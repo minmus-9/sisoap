@@ -90,29 +90,44 @@ def op_begin(ctx):
     if args is EL:
         ctx.val = EL
         return ctx.cont
-    ctx.push_ce()
     try:
         ctx.exp, args = args
     except TypeError:
         raise SyntaxError("expected list") from None
-    if args is EL:
-        ctx.pop_ce()
-    else:
+    if args is not EL:
+        ctx.push_ce()
         ctx.push(args)
         ctx.cont = op_begin_next
+    ## if args was EL, we merely burned up a jump
     return k_leval
 
 
 def op_begin_next(ctx):
     args = ctx.pop()
-    ctx.env = ctx.top()
     try:
         ctx.exp, args = args
     except TypeError:
         raise SyntaxError("expected list") from None
     if args is EL:
+        ## i didn't understand this until watching top(1) run as
+        ## my tail-recursive code chewed up ram
+        ##
+        ## i *thought* begin/do wanted to be a special form because
+        ## the order of arg evaluation is up to the implementation.
+        ## since lcore explicitly evaluates args left to right, i
+        ## figured it didn't really matter. but no, not even close.
+        ##
+        ## THIS is why it's important that begin/do be a special
+        ## form: the stack is now unwound as we evaluate the
+        ## last arg so we get a tail call opporuntity. if you
+        ## do the moral equivalent of
+        ##          (define (do & args) (last args))
+        ## it'll work fine, but you don't get tco, just recursion.
+        ##
+        ## which you can see with top(1) :D
         ctx.pop_ce()
     else:
+        ctx.env = ctx.top()
         ctx.push(args)
         ctx.cont = op_begin_next
     return k_leval
@@ -884,20 +899,6 @@ RUNTIME = r"""
 
 ;; }}}
 ;; {{{ reverse
-
-(define (reverse l)
-    (define r ())
-    (define c (call/cc (lambda (cc) cc)))
-    (if
-        (null? l)
-        r
-        (begin
-            (set! r (cons (car l) r))
-            (set! l (cdr l))
-            (c c)
-        )
-    )
-)
 
 (define (reverse l)
     (define (rev x y)

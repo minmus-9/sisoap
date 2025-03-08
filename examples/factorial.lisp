@@ -45,7 +45,7 @@
     (if
         (lt? n 2)
         n!
-        ( do
+        (begin
             (set! n! (mul n n!))
             (set! n  (sub n 1))
             (c c)
@@ -63,7 +63,7 @@
 (define (!5 n)
     (define cont ())
     (define n! 1)
-    (define k (call/cc (lambda (cc) (do (set! cont cc) n))))
+    (define k (call/cc (lambda (cc) (set! cont cc) n)))
     (set! n! (mul n! k))
     (cond
         ((lt? n 1) 1)
@@ -97,7 +97,7 @@
         (if
             (ge? i stop)
             ()
-            ( do
+            (begin
                 (set! i (add i step))
                 i
             )
@@ -109,7 +109,7 @@
 (define (!9 n)
     (define (f r)
         (if
-            (null? (do (define k ((car r))) k))
+            (null? (begin (define k ((car r))) k))
             (cdr r)
             (f (cons (car r) (mul (cdr r) k)))
         )
@@ -122,21 +122,21 @@
         (it (xrange 2 n 1))
         (c  ())
         (n! 1)
-        (k  (call/cc (lambda (cc) (do (set! c cc) (it))))))
+        (k  (call/cc (lambda (cc) (set! c cc) (it)))))
         (if
             (null? k)
             n!
-            (do (set! n! (mul n! k)) (c (it)))
+            (begin (set! n! (mul n! k)) (c (it)))
         )
     )
 )
 
 (define (!11 n)
     (define c ())
-    ((lambda (n! k) ( do
+    ((lambda (n! k)
         (set! n (sub k 1))
-        (if (lt? k 2) n! (c (mul n! k)))))
-        (call/cc (lambda (cc) (do (set! c cc) 1)))
+        (if (lt? k 2) n! (c (mul n! k))))
+        (call/cc (lambda (cc) (set! c cc) 1))
         n
     )
 )
@@ -157,10 +157,7 @@
     )
     (f
         (call/cc
-            (lambda (cc) (do
-                (set! c cc)
-                (cons 1 n))
-            )
+            (lambda (cc) (set! c cc) (cons 1 n))
         )
     )
 )
@@ -225,7 +222,7 @@
         (if
             (null? l)
             ()
-            (do
+            (begin
                 (set! n! (mul n! (car l)))
                 (set! l (cdr l))
                 #t

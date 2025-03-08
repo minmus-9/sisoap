@@ -27,9 +27,9 @@
     (lambda ()
         (if
             (not already-run?)
-            (do (set! result (proc))
-                (set! already-run? #t)
-                result
+            (begin  (set! result (proc))
+                    (set! already-run? #t)
+                    result
             )
             result
         )
@@ -60,7 +60,7 @@
     (if
         (stream-null? s)
         'done
-        (do
+        (begin
             (proc (stream-car s))
             (stream-for-each proc (stream-cdr s))
         )
@@ -148,7 +148,7 @@
         (if
             (stream-null? s)
             ()
-            (do
+            (begin
                 (f (stream-car s))
                 (set! s (stream-cdr s))
                 #t

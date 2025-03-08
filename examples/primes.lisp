@@ -37,7 +37,7 @@
             ()
             (if 
                 (equal? 0 (mod i p))
-                (do (set! ok ()) ())
+                (begin (set! ok ()) ())
                 (if (lt? i (mul p p)) () #t)
             )
         )
@@ -47,7 +47,7 @@
         (set! ok #t)
         (set! l pl)
         (while inner)
-        (if ok (do (q i) pl) ())
+        (if ok (begin (q i) pl) ())
     )
     (define (driver)
         (while (lambda () (not (outer))))
