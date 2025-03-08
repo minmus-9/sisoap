@@ -445,6 +445,16 @@ def op_atom_f(x):
 @glbl("call/cc")
 @glbl("call-with-current-continuation")
 def op_callcc(ctx):
+    ## add a little sugar for speed: if called without arguments,
+    ## just return a continuation; i.e.,
+    ##      (define c (call/cc))
+    ## is equivalent to the idiom
+    ##      (define c (call/cc (lambda (cc) cc)))
+    ## but a lot faster
+    if ctx.argl is EL:
+        ctx.val = create_continuation(ctx)
+        return ctx.cont
+    ## ok, do it the "hard way"
     proc = ctx.unpack1()
     try:
         _ = proc.__call__

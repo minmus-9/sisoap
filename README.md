@@ -50,6 +50,61 @@ to run the REPL and
 ```
 to run code from a file.
 
+## The Language
+
+The core language is pretty much complete I think:
+
+|Special Form|Description (see the source)|
+|--------------------------|-----------------------------|
+|`(begin e1 e2 ...)`|evaluate the expressions in order and return the last one|
+|`(cond ((p c) ...)`|return `(eval c)` for the `(eval p)` that returns true|
+|`(define sym body)`|bind `body` to `sym` in the current environment|
+|`(define (sym args) body)`|bind `(lambda (args) body)` to `sym` in the current environment|
+|`(do ...)`|same as `begin`|
+|`(if p c a)`|return `(eval c)` if `(eval p)` returns true else `(eval a)`|
+|`(lambda args body)`|create a function|
+|`(quasiquote x)`|aka \`, begin quasiquoted form|
+|`(quote obj)`|aka `'`, returns obj unevaluated|
+|`(set! sym value)`|redefine the innermost definition of `sym`|
+|`(special sym proc)`|define a special form|
+|`(special (sym args) proc)`|define a special form as `(lambda (args) body)`|
+|`(trap obj)`|returns a list containing a success-flag and a result or error message|
+|`(unquote x)`|aka `,` unquote x|
+|`(unquote-splicing x)`|aka `,@` unquote and splice in x|
+
+|Primitive|Description (see the source)|
+|--------------------------|------------------------------|
+|`()`|the empty list aka false|
+|`#t`|true singleton|
+|`(apply proc args)`|call `proc` with `args`|
+|`(atom? obj)`|return true if obj is an atom: `()` `#t` or symbol|
+|`(call/cc (lambda (cc) body))`|also `call-with-current-continuation`|
+|`(call/cc)`|fast version of `(call/cc (lambda (cc) cc))`|
+|`(car list)`|head of list|
+|`(cdr list)`|tail of list|
+|`(cons obj1 obj2)`|create a pair or prepend to list `obj2`|
+|`(div n1 n2)`|`n1 / n2`|
+|`(/ n1 n2)`|same as `div`|
+|`(eq? x y)`|return true if 2 atoms are the same|
+|`(equal? n1 n2)`|return true if n1 and n2 are equal|
+|`(error obj)`|raise `lcore.error` with `obj`|
+|`(eval obj)`|evaluate `obj`|
+|`(eval obj n_up)`|evaluate `obj` up `n_up` namespaces|
+|`(exit obj)`|raise `SystemExit` with the given `obj`|
+|`(last list)`|last element of list|
+|`(lt? n1 n2)`|return true if `n1 < n2`|
+|`(< n1 n2)`|same as `lt?`|
+|`(mul n1 n2)`|return `n1 * n2`|
+|`(nand n1 n2)`|return `~(n1 & n2)`|
+|`(null? x)`|return #t if x is ()|
+|`(print ...)`|print a list of objects space-separated followed by a newline|
+|`(set-car! list value)`|set the head of a list|
+|`(set-cdr! list list`)|set the tail of a list to another list|
+|`(sub n1 n2)`|`n1 - n2`|
+|`(- n1 n2)`|same as `sub`|
+|`(type obj)`|return a symbol representing the type of `obj`|
+|`(while func)`|abomination to call `(func)` until it returns false|
+
 ## The Files
 
 The evaluator lives in 2 files: `lcore.py` and `lisp.py`. The runtime
@@ -109,12 +164,14 @@ Python lists as LISP lists breaks when you get to `set-cdr!`.
 The runtime stack is also implented as a LISP linked list of pairs.
 This is almost twice as fast as using the `list.append()` and
 `lisp.pop()` methods (pronounced *function calls*). You get the
-idea.
+idea. This choice make continuations *cheap*. If you use a regular
+list for the stack, you have to slice the whole thing to create a
+continuation.
 
 The `Context` class provides `.push()` and `.pop()` methods but
-doesn't use them internally. The `leval()` family of functions
-inlines all of the stack operations for speed; this code needs all
-the help it can get, speed-wise. You'll see things like
+`lcore.py` doesn't use them internally. The `leval()` family of
+functions inlines all of the stack operations for speed; this code
+needs all the help it can get, speed-wise. You'll see things like
 ```
 ctx.s = [x, ctx.s]  ## push(x)
 ```
@@ -133,7 +190,7 @@ optimized because they're used so much.
 
 As a final note, passing circular data structures into the core
 will definitely cause infinite loops. Fixing this would have a
-grave performance impact and so this hasn't been done.
+grave performance impact and so it hasn't been implemented.
 
 ## License
 
