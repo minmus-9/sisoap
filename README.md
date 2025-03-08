@@ -2,7 +2,7 @@
 
 A couple of years ago I heard about the book "Structure and
 Interpretation of Computer Programs" (SICP, available at
-https://web.mit.edu/6.001/6.037/sicp.pdf). I dedcided to give
+https://web.mit.edu/6.001/6.037/sicp.pdf). I decided to give
 it a read and immediately ran into a problem: I didn't know
 Scheme. After looking around at the 10,000 Scheme-s I decided
 that *I* would be best served by implementing my own LISP-y
@@ -17,7 +17,7 @@ implement it.
 
 About 18 months later while on vacation, I woke up one morning
 *getting it*. Being a 30-year Python veteran, I chose that as
-my implentation language, and soon had a simple recursive
+my implementation language, and soon had a simple recursive
 implementation up and running. Turns out that you can't do too
 much with a pure-recursive Python LISP unless you introduce
 abominations like `(while)` and do things iteratively. Which
@@ -194,7 +194,7 @@ if callable(proc):
 and
 ```
 if x.__class__ is list:
-    [do someting]
+    [do something]
 ```
 instead of
 ```
@@ -212,7 +212,7 @@ or its equivalent, is about the only thing that works with the
 mutators `set-car!` and `set-cdr!`. In particular, using regular
 Python lists as LISP lists breaks when you get to `set-cdr!`.
 
-The runtime stack is also implented as a LISP linked list of pairs.
+The runtime stack is also implemented as a LISP linked list of pairs.
 This is almost twice as fast as using the `list.append()` and
 `lisp.pop()` methods (pronounced *function calls*). You get the
 idea. This choice make continuations *cheap*. If you use a regular
@@ -250,7 +250,7 @@ will eventually get cleaned up.
 This code is licensed under the GPLv3:
 
 ```
-sisoap - python lisp: solution in search of a problem
+SISOAP - python lisp: solution in search of a problem
        https://github.com/minmus-9/sisoap
 Copyright (C) 2025  Mark Hays (github:minmus-9)
 
