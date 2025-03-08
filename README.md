@@ -1,5 +1,29 @@
 # Python LISP: Solution In Search Of A Problem
 
+A couple of years ago I heard about the book "Structure and
+Interpretation of Computer Programs" (SICP, available at
+https://web.mit.edu/6.001/6.037/sicp.pdf). I dedcided to give
+it a read and immediately ran into a problem: I didn't know
+Scheme. After looking around at the 10,000 Scheme-s I decided
+that *I* would be best served by implementing my own LISP-y
+thing. It wasn't successful; I just didn't *get it* despite
+having read a bunch of code and docs.
+
+In the meantime I read the Trampoline paper
+(https://dl.acm.org/doi/pdf/10.1145/317636.317779) and became
+interested in continuations, trampolines, and continuation
+passing style (CPS). But I still didn't *get* LISP enough to
+implement it.
+
+About 18 months later while on vacation, I woke up one morning
+*getting it*. Being a 30-year Python veteran, I chose that as
+my implentation language, and soon had a simple recursive
+implementation up and running. Turns out that you can't do too
+much with a pure-recursive Python LISP unless you introduce
+abominations like `(while)` and do thing iteratively. Which sort
+of defeats the purpose of the whole exercise.
+
+
 ## License
 
 This code is licensed under the GPLv3:
