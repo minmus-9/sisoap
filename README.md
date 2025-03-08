@@ -25,15 +25,16 @@ sort of defeats the purpose of the whole exercise. But it was
 enough to get started reading SICP and I was hooked. On to
 CPS!
 
-It took a while to get used to CPS. After about 20 independent
-rewrites of various approaches to the problem, the code is in
-its present fully trampolined form with some amount of
-tail-call optimization (TCO); I'm still not sure if there's
-more work to do there. Anyway, consider this code as a digital
-pensieve of how trampolines and CPS work.
+It took a while to get used to CPS. After about 10,000
+from-scratch rewrites of various approaches to the problem,
+the code is in its present fully trampolined form with some
+amount of tail-call optimization (TCO); I'm still not sure
+if there's more work to do there. Anyway, consider this code
+as a digital pensieve of how trampolines and CPS work.
+Hopefully it'll be of interest and help others *get* CPS.
 
-Meanwhile, SICP melted my brain. *Everyone* should consider
-reading this book at least once. The code in this repo is a
+Meanwhile, SICP melted my brain. You might consider reading
+this book at least once. The code in this repo is a
 from-scratch implementation of the material in Chapter 5, but
 written in Python instead of Scheme. It's been a joyful
 experience to watch it unfold!
@@ -48,13 +49,17 @@ to run the REPL and
 ```
 ./lisp.py examples/factorial.lisp
 ```
-to run code from a file.
+to run code from a file. Finally,
+```
+./lisp.py file1 file2 ... fileN -
+```
+loads the specified files and then enters the REPL.
 
 ## The Language
 
 The core language is pretty much complete I think:
 
-|Special Form|Description (see the source)|
+|Special Form|Description|
 |--------------------------|-----------------------------|
 |`(begin e1 e2 ...)`|evaluate the expressions in order and return the last one|
 |`(cond ((p c) ...)`|return `(eval c)` for the `(eval p)` that returns true|
@@ -91,7 +96,6 @@ The core language is pretty much complete I think:
 |`(eval obj)`|evaluate `obj`|
 |`(eval obj n_up)`|evaluate `obj` up `n_up` namespaces|
 |`(exit obj)`|raise `SystemExit` with the given `obj`|
-|`(last list)`|last element of list|
 |`(lt? n1 n2)`|return true if `n1 < n2`|
 |`(< n1 n2)`|same as `lt?`|
 |`(mul n1 n2)`|return `n1 * n2`|
@@ -149,7 +153,10 @@ the special forms, primitives, LISP-Python Foreign Function
 Interface (FFI), etc. on top of `lcore.py` and includes a LISP runtime
 embedded as a Python string so that you end up with something that is
 pretty functional and can run (after obvious translations) the code
-in SICP.
+in SICP, stuff from The Goog, books, and so forth.
+
+Please pardon my LISP coding style. I'm new to LISP and haven't quite
+hit a groove yet.
 
 ## Code Overview
 
@@ -221,11 +228,13 @@ The code in `lisp.py` is a bit more traditional and idiomatic. It
 uses `.push()`, `.pop()`, `car()`, `cdr()`, and so on to enhance
 clarity and let you focus on *what* is going on instead of *how*
 it's happening. The `unary()` and `binary()` helper functions are
-optimized because they're used so much.
+optimized a bit because they're used so much.
 
 As a final note, passing circular data structures into the core
 will definitely cause infinite loops. Fixing this would have a
 grave performance impact and so it hasn't been implemented.
+The Python GC is the LISP GC and any LISP circular references
+will eventually get cleaned up.
 
 ## License
 

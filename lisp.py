@@ -549,19 +549,6 @@ def k_op_exit(ctx):
     raise SystemExit(ctx.val)
 
 
-@glbl("last")
-def op_last(ctx):
-    x = ctx.unpack1()
-    try:
-        ret = EL
-        while x is not EL:
-            ret, x = x
-    except TypeError:
-        raise SyntaxError(f"expected list, got {x!r}") from None
-    ctx.val = ret
-    return ctx.cont
-
-
 @glbl("lt?")
 @glbl("<")
 def op_lt(ctx):
