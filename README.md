@@ -29,13 +29,21 @@ It took a while to get used to CPS. After about 10,000
 from-scratch rewrites of various approaches to the problem,
 the code is in its present fully trampolined form with some
 amount of tail-call optimization (TCO); I'm still not sure
-if there's more work to do there. Anyway, consider this code
-as a digital pensieve of how trampolines and CPS work.
-Hopefully it'll be of interest and help others *get* CPS.
+if there's more work to do there. Homework: write 10,000
+versions of LISP. The first (easy) one is a pure-recursive
+implementation where leval() calls itself. Second, introduce
+CPS. Third, go register-based. Fourth... Well I'm not there
+yet.
 
-Meanwhile, SICP melted my brain. You might consider reading
-this book at least once. The code in this repo is a
-from-scratch implementation of the material in Chapter 5, but
+Anyway, consider this code as a digital pensieve of how
+trampolines and CPS work. Hopefully it'll be of interest
+and help others *get* CPS. Aside from that, as a practical
+library, this code is a SISOAP. If you think of something
+useful to do with it, please let me know!
+
+SICP really expanded my mind. You might consider reading
+this book at least once. The code in this repo is an
+implementation of part of the material in Chapter 5
 written in Python instead of Scheme. It's been a joyful
 experience to watch it unfold!
 
