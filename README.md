@@ -67,7 +67,7 @@ The core language is pretty much complete I think:
 |`(quote obj)`|aka `'`, returns obj unevaluated|
 |`(set! sym value)`|redefine the innermost definition of `sym`|
 |`(special sym proc)`|define a special form|
-|`(special (sym args) proc)`|define a special form as `(lambda (args) body)`|
+|`(special (sym args) body)`|define a special form as `(lambda (args) body)`|
 |`(trap obj)`|returns a list containing a success-flag and a result or error message|
 |`(unquote x)`|aka `,` unquote x|
 |`(unquote-splicing x)`|aka `,@` unquote and splice in x|
@@ -104,6 +104,41 @@ The core language is pretty much complete I think:
 |`(- n1 n2)`|same as `sub`|
 |`(type obj)`|return a symbol representing the type of `obj`|
 |`(while func)`|abomination to call `(func)` until it returns false|
+
+You'll note that `+` is not in the list. It is implemented in the standard
+library in terms of subtraction. `nand` is used to create all of the other
+basic bitwise ops. There's no predefined I/O either since it isn't clear
+what is wanted there, but see the next section.
+
+## FFI
+
+Rather than adding everything under the sun as a built-in (I'm thinking of
+the large number of functions in the `math` module, specifically), I chose
+to create a Foreign Function Interface (FFI) to Python to ease incorporating
+additional things into this LISP-ish doodad. With this interface, Python gets
+to work with native Python lists instead of LISP lists; values are converted
+back and forth automatically.
+
+The net result is that the `math` module interface looks like
+```
+(math symbol args...)
+```
+so `sin(x)` can be obtained with
+```
+(math 'sin x)
+```
+where `(math)` is something close to (sans error checking):
+```
+@ffi("math")
+def op_ffi_math(args):
+    import math
+    sym = args.pop(0)
+    return getattr(math, str(sym))(*args)
+```
+which gets you the whole `math` module at once. See the "ffi" section of
+`lisp.py` for the whole scoop. There are interfaces to `math`, `random`,
+and `time` so far, along with some odds and ends like `(range)` and
+`(shuffle)` that require separate treatment.
 
 ## The Files
 
