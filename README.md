@@ -102,6 +102,7 @@ The core language is pretty much complete I think:
 |`(nand n1 n2)`|return `~(n1 & n2)`|
 |`(null? x)`|return #t if x is ()|
 |`(print ...)`|print a list of objects space-separated followed by a newline|
+|`(range start stop step)`|same as the python function, *much* faster than FFI|
 |`(set-car! list value)`|set the head of a list|
 |`(set-cdr! list list`)|set the tail of a list to another list|
 |`(sub n1 n2)`|`n1 - n2`|

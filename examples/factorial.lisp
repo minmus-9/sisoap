@@ -256,6 +256,7 @@
 (define (!bench)
     (define reps 5)
     (define n 400)
+    (print '--  (timeit (lambda (_) ()) 100))
     (print '!1  (timeit (lambda (_) (!1 n)) reps))
     (print '!2  (timeit (lambda (_) (!2 n)) reps))
     (print '!3  (timeit (lambda (_) (!3 n)) reps))

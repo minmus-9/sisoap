@@ -435,6 +435,10 @@ def op_apply(ctx):
 
 @glbl("atom?")
 def op_atom(ctx):
+    ## you could change op_atom_f to a lambda and save a global
+    ## lookup. i like being able to look at a profile and tell
+    ## what's going on without having to reference the code, even
+    ## with a small performance penalty
     return unary(ctx, op_atom_f)
 
 
@@ -450,7 +454,7 @@ def op_callcc(ctx):
     ##      (define c (call/cc))
     ## is equivalent to the idiom
     ##      (define c (call/cc (lambda (cc) cc)))
-    ## but a lot faster
+    ## but 20% faster
     if ctx.argl is EL:
         ctx.val = create_continuation(ctx)
         return ctx.cont
@@ -623,6 +627,16 @@ def k_op_print(ctx):
     return k_stringify
 
 
+@glbl("range")  ## this is a prim because ffi is too slow for large lists
+def op_range(ctx):
+    start, stop, step = ctx.unpack3()
+    ret = EL
+    for i in reversed(range(start, stop, step)):
+        ret = cons(i, ret)
+    ctx.val = ret
+    return ctx.cont
+
+
 @glbl("set-car!")
 def op_setcar(ctx):
     return binary(ctx, set_car)
@@ -727,11 +741,6 @@ def op_ffi_random(args):
     return module_ffi(args, random)
 
 
-@ffi("range")
-def op_ffi_range(args):
-    return list(range(*args))
-
-
 @ffi("shuffle")
 def op_ffi_shuffle(args):
     import random  ## pylint: disable=import-outside-toplevel
@@ -777,7 +786,7 @@ RUNTIME = r"""
 ;; call f for each element of lst, returns ()
 
 (define (foreach f lst)
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (if
         (null? lst)
         ()
@@ -865,7 +874,7 @@ RUNTIME = r"""
             ))
             (#t ())
         )
-    ) (call/cc (lambda (cc) cc)) )
+    ) (call/cc) )
 )
 
 (special (or & __special_or_args__)
@@ -878,7 +887,7 @@ RUNTIME = r"""
                 (c c)
             ))
         )
-    ) (call/cc (lambda (cc) cc)) )
+    ) (call/cc) )
 )
 
 (define (not x) (if (eq? x ()) #t ()))
@@ -950,7 +959,7 @@ RUNTIME = r"""
 
 (define (length l)
     (define n 0)
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (if
         (null? l)
         n
@@ -988,7 +997,7 @@ RUNTIME = r"""
 
 (define (accumulate-n f initial sequences)
     (define r ())
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (if
         (null? (car sequences))
         (reverse r)
@@ -1243,7 +1252,7 @@ RUNTIME = r"""
 
 ;; call f in a loop forever
 (define (loop f)
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (f)
     (c c)
 )
@@ -1272,7 +1281,7 @@ RUNTIME = r"""
 ;; {{{ iterate (compose with itself) a function
 
 (define (iter-func f x0 n)
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (if
         (lt? n 1)
         x0
@@ -1305,7 +1314,7 @@ RUNTIME = r"""
         ((lt? x y) (gcd y x))
         ((equal? x 0) 1)
         (#t
-            (define c (call/cc (lambda (cc) cc)))
+            (define c (call/cc))
             (if
                 (equal? y 0)
                 x
