@@ -29,7 +29,7 @@ The file LICENSE contains a copy of the full GPL text.
 
 Here are some lisp-related refs that *heavily* influenced this code:
 
-- https://web.mit.edu/6.001/6.037/sicp.pdf
+- https://web.mit.edu/6.001/6.037/sicp.pdf (*especially Chapter 5*)
 - https://buildyourownlisp.com
 - https://www.hashcollision.org/hkn/python/pyscheme/
 - https://norvig.com/lispy.html
