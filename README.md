@@ -40,9 +40,62 @@ experience to watch it unfold!
 
 ## Running the Code
 
+Use
 ```
-./lisp.py examples/factorial.lisp  ## to run code from a file
-./lisp.py -                        ## for a REPL
+./lisp.py -
+```
+to run the REPL and
+```
+./lisp.py examples/factorial.lisp
+```
+to run code from a file.
+
+## The Files
+
+The evaluator lives in 2 files: `lcore.py` and `lisp.py`. The runtime
+engine lives in `lcore.py` and is where the real action happens in
+terms of trampolines, CPS, etc. The file `lisp.py` implements all of
+the special forms, primitives, LISP-Python Foreign Function
+Interface (FFI), etc. on top of `lcore.py` and includes a LISP runtime
+embedded as a Python string so that you end up with something that is
+pretty functional and can run (after obvious translations) the code
+in SICP.
+
+## Code Overview
+
+Aside from the CPS thing, the code in `lisp.py` is fairly
+straightforward: each operator receives an `lcore.Context` instance
+that contains the interpreter's execution state (registers, stack,
+symbol table, and global environment) and returns a continuation. In
+the python realm, a continuation is just a python function that is
+called from `Context.trampoline()`. The trampoline is really a means
+of implementing `goto` for languages that don't have `goto`.
+
+The code in `lcore.py` is fairly optimized and is filled with
+unidiomatic and somewhat bizarre constructs including gems like
+```
+try:
+    _ = proc.__call__
+    [do something with callable proc]
+except AttributeError:
+    [do something else with non-callable "proc"]
+```
+instead of
+```
+if callable(proc):
+    [do something with callable proc]
+else:
+    [do something else with non-callable "proc"]
+```
+and
+```
+if x.__class__ is list:
+    [do someting]
+```
+instead of
+```
+if isinstance(x, list):
+    [do something]
 ```
 
 ## License
