@@ -1274,6 +1274,20 @@ RUNTIME = r"""
     (c c)
 )
 
+(define (loop-with-break f)
+    (define (g break)
+        (define c (call/cc))
+        (f break)
+        (c c)
+    )
+    (define c (call/cc))
+    (if
+        (null? c)
+        ()
+        (g (lambda () (c ())))
+    )
+)
+
 ;; call f a given number of times as (f counter)
 (define (for f start stop step)
     (if
