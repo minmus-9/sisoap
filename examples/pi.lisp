@@ -26,7 +26,7 @@
     (f  (call/cc (lambda (cc) cc))
         (set! z (add z (div s k)))
         (set! k (add k 2))
-        (set! s (neg s))
+        (set! s (- s))
     )
 )
 (timeit pi1 1)

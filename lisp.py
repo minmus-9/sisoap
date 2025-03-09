@@ -95,15 +95,14 @@ def op_begin(ctx):
     except TypeError:
         raise SyntaxError("expected list") from None
     if args is not EL:
-        ctx.push_ce()
-        ctx.push(args)
+        ctx.s = [args, [ctx.env, [ctx.cont, ctx.s]]]
         ctx.cont = op_begin_next
     ## if args was EL, we merely burned up a jump
     return k_leval
 
 
 def op_begin_next(ctx):
-    args = ctx.pop()
+    args, s = ctx.s
     try:
         ctx.exp, args = args
     except TypeError:
@@ -125,10 +124,11 @@ def op_begin_next(ctx):
         ## it'll work fine, but you don't get tco, just recursion.
         ##
         ## which you can see with top(1) :D
-        ctx.pop_ce()
+        ctx.env, s = s
+        ctx.cont, ctx.s = s
     else:
-        ctx.env = ctx.top()
-        ctx.push(args)
+        ctx.env = s[0]
+        ctx.s = [args, s]
         ctx.cont = op_begin_next
     return k_leval
 
@@ -209,20 +209,28 @@ def k_op_define(ctx):
     return ctx.cont
 
 
+## optimized (if)
+
 @spcl("if")
 def op_if(ctx):
-    p, c, a = ctx.unpack3()
-    ctx.push_ce()
-    ctx.push((c, a))
-    ctx.exp = p
+    try:
+        ctx.exp, rest = ctx.argl
+        c, rest = rest
+        a, rest = rest
+        if rest is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected three args")
+    ctx.s = [(c, a), [ctx.env, [ctx.cont, ctx.s]]]
     ctx.cont = k_op_if
     return k_leval
 
 
 def k_op_if(ctx):
-    c, a = ctx.pop()
-    ctx.pop_ce()
-    ctx.exp = a if ctx.val is EL else c
+    ca, s = ctx.s
+    ctx.env, s = s
+    ctx.cont, ctx.s = s
+    ctx.exp = ca[1] if ctx.val is EL else ca[0]
     return k_leval
 
 
@@ -261,6 +269,37 @@ def op_setbang(ctx):
 def k_op_setbang(ctx):
     ctx.pop_ce()
     sym = ctx.pop()
+    e = ctx.env
+    while e is not SENTINEL:
+        if sym in e:
+            e[sym] = ctx.val
+            ctx.val = EL
+            return ctx.cont
+        e = e[SENTINEL]
+    raise NameError(str(sym))
+
+
+@spcl("set!")
+def op_setbang(ctx):
+    try:
+        sym, a = ctx.argl
+        value, a = a
+        if a is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected two args") from None
+    if sym.__class__ is not Symbol:
+        raise SyntaxError("expected symbol")
+    ctx.s = [ctx.env, [ctx.cont, [sym, ctx.s]]]
+    ctx.cont = k_op_setbang
+    ctx.exp = value
+    return k_leval
+
+
+def k_op_setbang(ctx):
+    ctx.env, s = ctx.s
+    ctx.cont, s = s
+    sym, ctx.s = s
     e = ctx.env
     while e is not SENTINEL:
         if sym in e:
@@ -591,6 +630,12 @@ def op_null(ctx):
     return ctx.cont
 
 
+@glbl("obj>string")
+def op_stringify(ctx):
+    ctx.exp = ctx.unpack1()
+    return k_stringify
+
+
 @glbl("print")
 def op_print(ctx):
     args = ctx.argl
@@ -650,11 +695,18 @@ def op_setcdr(ctx):
 @glbl("sub")
 @glbl("-")
 def op_sub(ctx):
-    return binary(ctx, op_sub_f)
-
-
-def op_sub_f(x, y):
-    return x - y
+    try:
+        x, a = ctx.argl
+        if a is EL:
+            x, y = 0, x
+        else:
+            y, a = a
+            if a is not EL:
+                raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected one or two args") from None
+    ctx.val = x - y
+    return ctx.cont
 
 
 @glbl("type")
@@ -786,14 +838,12 @@ RUNTIME = r"""
 ;; call f for each element of lst, returns ()
 
 (define (foreach f lst)
-    (define c (call/cc))
     (if
         (null? lst)
         ()
         (begin
             (f (car lst))
-            (set! lst (cdr lst))
-            (c c)
+            (foreach f (cdr lst))
         )
     )
 )
@@ -810,18 +860,17 @@ RUNTIME = r"""
 ;; }}}
 ;; {{{ arithmetic
 
-(define (neg x) (sub 0 x))
-(define (add x y) (sub x (neg y)))
-(define + add)
+(define (+ x y) (- x (- y)))
+(define add +)
 
-;; oh, and mod
-(define (mod n d) (sub n (mul d (div n d))))
+;; oh, mod
+(define (% n d) (- n (* d (/ n d))))
 
 ;; absolute value
 (define (abs x)
     (if
-        (lt? x 0)
-        (neg x)
+        (< x 0)
+        (- x)
         x
     )
 )
@@ -829,35 +878,36 @@ RUNTIME = r"""
 ;; copysign
 (define (copysign x y)
     (if
-        (lt? y 0)
-        (neg (abs x))
+        (< y 0)
+        (- (abs x))
         (abs x)
     )
 )
 
-;; (signed) shifts
+;; unsigned shifts
 (define (lshift x n)
     (cond
         ((equal? n 0)   x)
-        ((equal? n 1)   (add x x))
-        (#t             (lshift (lshift x (sub n 1)) 1))
+        ((equal? n 1)   (+ x x))
+        (#t             (lshift x (lshift x 1) (- n 1)))
     )
 )
 
 (define (rshift x n)
     (cond
         ((equal? n 0)   x)
-        ((equal? n 1)   (div x 2))
-        (#t             (rshift (rshift x (sub n 1)) 1))
+        ((equal? n 1)   (/ x 2))
+        (#t             (rshift x (rshift x 1) (- n 1)))
     )
 )
 
 ;; }}}
 ;; {{{ comparison predicates
 
-(define (le? x y) (if (lt? x y) #t (if (equal? x y) #t ())))
-(define (ge? x y) (not (lt? x y)))
-(define (gt? x y) (lt? y x))
+(define (<= x y) (if (< x y) #t (if (equal? x y) #t ())))
+(define (>= x y) (not (< x y)))
+(define (>  x y) (< y x))
+(define (!= x y) (not (equal? x y)))
 
 ;; }}}
 ;; {{{ and or not
@@ -890,7 +940,7 @@ RUNTIME = r"""
     ) (call/cc) )
 )
 
-(define (not x) (if (eq? x ()) #t ()))
+(define not null?)
 
 ;; }}}
 ;; {{{ assert
@@ -899,7 +949,7 @@ RUNTIME = r"""
     (if
         (eval __special_assert_sexpr__)
         ()
-        (error (>string __special_assert_sexpr__))
+        (error (obj>string __special_assert_sexpr__))
     )
 )
 
@@ -945,7 +995,7 @@ RUNTIME = r"""
             fin
             (begin
                     (set! item (list index (car lst)))
-                    (set! index (add index 1))
+                    (set! index (+ index 1))
                     (set! lst (cdr lst))
                     item
             )
@@ -964,7 +1014,7 @@ RUNTIME = r"""
         (null? l)
         n
         (begin
-            (set! n (add n 1))
+            (set! n (+ n 1))
             (set! l (cdr l))
             (c c)
         )
@@ -1026,7 +1076,8 @@ RUNTIME = r"""
         (begin
             (define ht (join$start (car x)))
             (join$1 (cdr x) ht)
-            (join$1 y ht)
+            (set-cdr! (cdr ht) y)
+            (car ht)
         )
     )
 )
@@ -1048,67 +1099,6 @@ RUNTIME = r"""
         )
     )
 )
-
-;; }}}
-;; {{{ queue
-
-(define (queue)
-    (define h ())
-    (define t ())
-
-    (define (dispatch op & args)
-        (cond
-            ((eq? op (quote enqueue))
-                (if
-                    (equal? (length args ) 1)
-                    (begin
-                        (define node (cons (car args) ()))
-                        (if
-                            (null? h)
-                            (set! h node)
-                            (set-cdr! t node)
-                        )
-                        (set! t node)
-                        ()
-                    )
-                    (error "enqueue takes one arg")
-                )
-            )
-            ((eq? op (quote dequeue))
-                (if
-                    (equal? (length args) 0)
-                        (if
-                            (null? h)
-                            (error "queue is empty")
-                            ( let (
-                                (ret (car h)))
-                                (begin
-                                    (set! h (cdr h))
-                                    (if (null? h) (set! t ()) ())
-                                    ret
-                                )
-                            )
-                        )
-                    (error "dequeue takes no args")
-                )
-            )
-            ((eq? op (quote empty?)) (eq? h ()))
-            ((eq? op (quote enqueue-many))
-                (if
-                    (and (equal? (length args) 1) (pair? (car args)))
-                    (begin
-                        (foreach enqueue (car args))
-                        dispatch
-                    )
-                    (error "enqueue-many takes one list arg")
-                )
-            )
-            ((eq? op (quote get-all)) h)
-        )
-    )
-    dispatch
-)
-
 
 ;; }}}
 ;; {{{ let
