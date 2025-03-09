@@ -176,16 +176,17 @@ def create_environment(ctx, params, args, parent):
             if p is v:
                 variadic = True
             elif variadic:
-                if params is not EL:
-                    raise SyntaxError("trailing junk after &")
-                t[p] = args
-                return t
+                if params is EL:
+                    t[p] = args
+                    break
+                raise SyntaxError("trailing junk after &")
             else:
                 t[p], args = args
-        if variadic:
-            raise SyntaxError("params end with &")
-        if args is not EL:
-            raise SyntaxError("too many args")
+        else:
+            if variadic:
+                raise SyntaxError("params end with &")
+            if args is not EL:
+                raise SyntaxError("too many args")
         return t
     except TypeError:
         if args is EL:

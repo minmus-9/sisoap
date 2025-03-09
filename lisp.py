@@ -217,6 +217,7 @@ def k_op_define(ctx):
 
 ## optimized (if)
 
+
 @spcl("if")
 def op_if(ctx):
     try:
@@ -226,7 +227,7 @@ def op_if(ctx):
         if rest is not EL:
             raise TypeError()
     except TypeError:
-        raise SyntaxError("expected three args")
+        raise SyntaxError("expected three args") from None
     ctx.s = [(c, a), [ctx.env, [ctx.cont, ctx.s]]]
     ctx.cont = k_op_if
     return k_leval
@@ -260,29 +261,6 @@ def op_lambda(ctx):
 def op_quote(ctx):
     ctx.val = ctx.unpack1()
     return ctx.cont
-
-
-@spcl("set!")
-def op_setbang(ctx):
-    sym, value = ctx.unpack2()
-    ctx.push(symcheck(sym))
-    ctx.push_ce()
-    ctx.cont = k_op_setbang
-    ctx.exp = value
-    return k_leval
-
-
-def k_op_setbang(ctx):
-    ctx.pop_ce()
-    sym = ctx.pop()
-    e = ctx.env
-    while e is not SENTINEL:
-        if sym in e:
-            e[sym] = ctx.val
-            ctx.val = EL
-            return ctx.cont
-        e = e[SENTINEL]
-    raise NameError(str(sym))
 
 
 @spcl("set!")

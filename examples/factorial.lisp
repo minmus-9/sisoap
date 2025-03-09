@@ -18,20 +18,8 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; classic recursive
 (define (!1 n)
-    (if
-        (define n! 1)
-        ()
-        ((lambda (c _ _)                ;; huh. gotta love it!
-            (if (lt? n 2) n! (c c)))    ;; misleading formatting++
-            (call/cc (lambda (cc) cc))
-            (set! n! (mul n! n))
-            (set! n (sub n 1))
-        )
-    )
-)
-
-(define (!2 n)
     (if
         (lt? n 2)
         1
@@ -39,9 +27,39 @@
     )
 )
 
+;; classic iterative
+(define (!2 n)
+    (define (iter n! k)
+        (if
+            (lt? k 2)
+            n!
+            (iter (mul n! k) (sub k 1))
+        )
+    )
+    (iter 1 n)
+)
+
+;; cheating :-)
 (define (!3 n)
+     (math 'factorial n)
+)
+
+(define (!4 n)
+    (if
+        (define n! 1)
+        ()
+        ((lambda (c _ _)                ;; huh. gotta love it!
+            (if (lt? n 2) n! (c c)))    ;; misleading formatting++
+            (call/cc)
+            (set! n! (mul n! n))
+            (set! n (sub n 1))
+        )
+    )
+)
+
+(define (!5 n)
     (define n! 1)
-    (define c (call/cc (lambda (cc) cc)))
+    (define c (call/cc))
     (if
         (lt? n 2)
         n!
@@ -53,14 +71,14 @@
     )
 )
 
-(define (!4 n)
+(define (!6 n)
      (define n! 1)
      (define (f k) (set! n! (mul n! k)))
      (for f 2 (add n 1) 1)
      n!
 )
 
-(define (!5 n)
+(define (!7 n)
     (define cont ())
     (define n! 1)
     (define k (call/cc (lambda (cc) (set! cont cc) n)))
@@ -70,21 +88,6 @@
         ((lt? k 2) n!)
         (#t (cont (sub k 1)))
     )
-)
-
-(define (!6 n)
-    (define (iter n! k)
-        (if
-            (lt? k 2)
-            n!
-            (iter (mul n! k) (sub k 1))
-        )
-    )
-    (iter 1 n)
-)
-
-(define (!7 n)
-     (math 'factorial n)
 )
 
 (define (!8 n)
@@ -203,7 +206,7 @@
     (define n! 1)
     ((lambda (c & _)
         (if (lt? n 2) n! (c c)))
-        (call/cc (lambda (cc) cc))
+        (call/cc)
         (set! n! (mul n! n))
         (set! n  (sub n  1))
     )
@@ -245,9 +248,9 @@
 (define (!19 n)
     ((lambda (f) (f f 1 n))
         (lambda (f p k)
-            (if (lt? k 2)
+            (if (< k 2)
                 p
-                (f f (mul p k) (sub k 1))
+                (f f (* p k) (- k 1))
             )
         )
     )
@@ -256,7 +259,7 @@
 (define (!bench)
     (define reps 5)
     (define n 400)
-    (print '--  (timeit (lambda (_) ()) 100))
+    (print '- (timeit (lambda (_) ()) 100))
     (print '!1  (timeit (lambda (_) (!1 n)) reps))
     (print '!2  (timeit (lambda (_) (!2 n)) reps))
     (print '!3  (timeit (lambda (_) (!3 n)) reps))
