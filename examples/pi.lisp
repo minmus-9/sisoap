@@ -63,8 +63,8 @@
             (equal? d d1)
             (begin
                 ;(print d)
-                (set! a  (mul 10 (mod a b)))
-                (set! a1 (mul 10 (mod a1 b1)))
+                (set! a  (mul 10 (% a b)))
+                (set! a1 (mul 10 (% a1 b1)))
                 (set! d  (div a b))
                 (set! d1 (div a1 b1))
                 #t

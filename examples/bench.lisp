@@ -76,7 +76,7 @@
     (cond
         ((equal? y 0) x)
         ((equal? x 0) 1)
-        (#t (define r (mod x y))
+        (#t (define r (% x y))
             (e y r)
         )
     )

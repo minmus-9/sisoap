@@ -95,7 +95,7 @@
     (define i (sub start step))
     (define (next)
         (if
-            (ge? i stop)
+            (>= i stop)
             ()
             (begin
                 (set! i (add i step))

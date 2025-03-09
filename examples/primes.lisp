@@ -36,7 +36,7 @@
             (null? l)
             ()
             (if 
-                (equal? 0 (mod i p))
+                (equal? 0 (% i p))
                 (begin (set! ok ()) ())
                 (if (lt? i (mul p p)) () #t)
             )

@@ -135,17 +135,18 @@ def op_begin_next(ctx):
 
 @spcl("cond")
 def op_cond(ctx):
-    ctx.push_ce()
+    ctx.s = [ctx.env, [ctx.cont, ctx.s]]
     return op_cond_setup(ctx, ctx.argl)
 
 
 def op_cond_setup(ctx, args):
     if args is EL:
-        ctx.pop_ce()
+        ctx.env, s = ctx.s
+        ctx.cont, ctx.s = s
         ctx.val = EL
         return ctx.cont
 
-    ctx.env = ctx.top()
+    ctx.env = ctx.s[0]
 
     pc, args = args
     try:
@@ -154,22 +155,23 @@ def op_cond_setup(ctx, args):
             raise TypeError()
     except TypeError:
         raise SyntaxError("expected list, got {pc!r}") from None
-    if cdr(c) is EL:
-        c = car(c)
+    if c[1] is EL:
+        c = c[0]
     else:
-        c = cons(ctx.symbol("begin"), c)
-    ctx.push(c)
-    ctx.push(args)
+        c = [ctx.symbol("begin"), c]
+    ctx.s = [args, [c, ctx.s]]
     ctx.cont = op_cond_next
     return k_leval
 
 
 def op_cond_next(ctx):
-    args = ctx.pop()
-    ctx.exp = ctx.pop()
+    args, s = ctx.s
+    ctx.exp, s = s
     if ctx.val is EL:
+        ctx.s = s
         return op_cond_setup(ctx, args)
-    ctx.pop_ce()
+    ctx.env, s = s
+    ctx.cont, ctx.s = s
     return k_leval
 
 
@@ -180,30 +182,34 @@ def op_define(ctx):
         if body is EL:
             raise TypeError()
     except TypeError:
-        raise SyntaxError("define takes at leats 2 args") from None
+        raise SyntaxError("define takes at least 2 args") from None
 
     if sym.__class__ is list:
         sym, params = sym
-        if cdr(body) is EL:
-            body = car(body)
+        if sym.__class__ is not Symbol:
+            raise SyntaxError("expected symbol")
+        if body[1] is EL:
+            body = body[0]
         else:
-            body = cons(ctx.symbol("begin"), body)
-        ctx.env[symcheck(sym)] = create_lambda(params, body, ctx.env)
+            body = [ctx.symbol("begin"), body]
+        ctx.env[sym] = create_lambda(params, body, ctx.env)
         ctx.val = EL
         return ctx.cont
 
-    if cdr(body) is not EL:
+    if body[1] is not EL:
         raise SyntaxError("body must be a single value")
-    ctx.push_ce()
-    ctx.push(symcheck(sym))
-    ctx.exp = car(body)
+    if sym.__class__ is not Symbol:
+        raise SyntaxError("expected symbol")
+    ctx.s = [sym, [ctx.env, [ctx.cont, ctx.s]]]
+    ctx.exp = body[0]
     ctx.cont = k_op_define
     return k_leval
 
 
 def k_op_define(ctx):
-    sym = ctx.pop()
-    ctx.pop_ce()
+    sym, s = ctx.s
+    ctx.env, s = s
+    ctx.cont, ctx.s = s
     ctx.env[sym] = ctx.val
     ctx.val = EL
     return ctx.cont
@@ -494,11 +500,17 @@ def op_callcc(ctx):
     ## is equivalent to the idiom
     ##      (define c (call/cc (lambda (cc) cc)))
     ## but 20% faster
-    if ctx.argl is EL:
+    args = ctx.argl
+    if args is EL:
         ctx.val = create_continuation(ctx)
         return ctx.cont
     ## ok, do it the "hard way"
-    proc = ctx.unpack1()
+    try:
+        proc, a = args
+        if a is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected one arg") from None
     try:
         _ = proc.__call__
     except AttributeError:
@@ -740,26 +752,30 @@ def op_type(ctx):
 
 @glbl("while")
 def op_while(ctx):
-    x = ctx.unpack1()
+    try:
+        x, a = ctx.argl
+        if a is not EL:
+            raise TypeError()
+    except TypeError:
+        raise SyntaxError("expected one arg") from None
     if not callable(x):
         raise TypeError(f"expected callable, got {x!r}")
 
-    ctx.push(ctx.cont)
-    ctx.push(x)
-    ctx.push(ctx.env)
+    ctx.s = [ctx.env, [x, [ctx.cont, ctx.s]]]
     ctx.argl = EL
     ctx.cont = k_op_while
     return x
 
 
 def k_op_while(ctx):
-    ctx.env = ctx.pop()
-    x = ctx.top()
+    ctx.env, s = ctx.s
+    x = s[0]
 
     if ctx.val is EL:
-        ctx.pop()  ## x
-        return ctx.pop()
-    ctx.push(ctx.env)
+        s = s[1]
+        cont, ctx.s = s
+        return cont
+    ctx.s = [ctx.env, s]
     ctx.argl = EL
     ctx.cont = k_op_while
     return x
@@ -845,6 +861,17 @@ RUNTIME = r"""
             (f (car lst))
             (foreach f (cdr lst))
         )
+    )
+)
+
+;; }}}
+;; {{{ last
+
+(define (last lst)
+    (if
+        (null? (cdr lst))
+        (car lst)
+        (last (cdr lst))
     )
 )
 
