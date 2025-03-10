@@ -1243,7 +1243,7 @@ RUNTIME = r"""
 )
 
 ;; }}}
-;; {{{ looping: loop, for
+;; {{{ looping: loop, loop-with-break, for
 
 ;; call f in a loop forever
 (define (loop f)
