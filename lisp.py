@@ -1253,16 +1253,16 @@ RUNTIME = r"""
 )
 
 (define (loop-with-break f)
-    (define (g break)
-        (define c (call/cc))
-        (f break)
-        (c c)
-    )
     (define c (call/cc))
+    (define (break) (c ()))
     (if
         (null? c)
         ()
-        (g (lambda () (c ())))
+        (begin
+            (define c2 (call/cc))
+            (f break)
+            (c2 c2)
+        )
     )
 )
 
